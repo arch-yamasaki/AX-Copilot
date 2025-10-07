@@ -94,29 +94,9 @@ VITE_GEMINI_FUNCTION_NAME=generateCarte   # callable function 名 (例)
 
 ---
 
-## 4. Firebase 連携の実装ガイド（概要）
-1. `services/firebaseClient.ts` を作成し `initializeApp` と `getAuth` / `getFirestore` / `getFunctions` をエクスポート
-2. `services/authService.ts` でサインイン／サインアウト処理をラップし、`App.tsx` のビュー制御へ接続
-3. `services/carteRepository.ts` で Firestore CRUD を定義。`App.tsx` が使用している `localStorage` ロジックを置き換え
-4. Gemini 呼び出しを Cloud Functions callable (`generateCarte`) へ移行し、`services/geminiService.ts` はクライアント -> Functions 呼び出しに変更
-5. Firestore セキュリティルール例
-   ```
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /users/{userId}/cartes/{carteId} {
-         allow read, write: if request.auth != null
-           && request.auth.uid == userId
-           && request.auth.token.email.matches('.*@example.com$');
-       }
-     }
-   }
-   ```
-6. ドメイン制限を行う場合は Auth Blocking Functions (`beforeUserCreated`) で `user.email` をチェック
 
----
 
-## 5. デプロイ
+## 4. デプロイ
 
 ### 5-1. Firebase Hosting + Cloud Functions
 1. ビルド
