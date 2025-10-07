@@ -4,6 +4,7 @@ import { Carte } from './types';
 import ChatView from './components/ChatView';
 import DashboardView from './components/DashboardView';
 import { LogoIcon } from './components/icons/LogoIcon';
+import HomeView from './components/HomeView';
 import { observeAuth, signInWithGoogle, signOutApp, isAllowedEmail } from './services/authService';
 import { listCartes, addCarte as addCarteRepo, deleteAllCartes as deleteAllCartesRepo } from './services/carteRepository';
 
@@ -98,19 +99,23 @@ const App: React.FC = () => {
             <span className="text-xl font-bold tracking-wider text-gray-900">AX Copilot</span>
           </div>
           <div className="flex items-center space-x-2">
-            <button 
-              onClick={() => setView('chat')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${view === 'chat' ? 'bg-blue-600 text-white shadow-sm' : 'bg-transparent text-gray-600 hover:bg-gray-100'}`}
-            >
-              業務棚卸しボット
-            </button>
-            <button 
-              onClick={() => setView('dashboard')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${view === 'dashboard' ? 'bg-blue-600 text-white shadow-sm' : 'bg-transparent text-gray-600 hover:bg-gray-100'}`}
-              disabled={cartes.length === 0}
-            >
-              カルテダッシュボード
-            </button>
+            {user && (
+              <>
+                <button 
+                  onClick={() => setView('chat')}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${view === 'chat' ? 'bg-blue-600 text-white shadow-sm' : 'bg-transparent text-gray-600 hover:bg-gray-100'}`}
+                >
+                  業務棚卸しボット
+                </button>
+                <button 
+                  onClick={() => setView('dashboard')}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${view === 'dashboard' ? 'bg-blue-600 text-white shadow-sm' : 'bg-transparent text-gray-600 hover:bg-gray-100'}`}
+                  disabled={cartes.length === 0}
+                >
+                  カルテダッシュボード
+                </button>
+              </>
+            )}
             {!user ? (
               <button
                 onClick={() => signInWithGoogle().catch(err => console.error(err))}
@@ -131,8 +136,14 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-grow pt-20">
-        {view === 'chat' && <ChatView key={Date.now()} onCarteGenerated={handleCarteGenerated} />}
-        {view === 'dashboard' && <DashboardView cartes={cartes} onStartNew={handleStartNew} onClearData={handleClearData} highlightId={currentCarteId} />}
+        {!user ? (
+          <HomeView />
+        ) : (
+          <>
+            {view === 'chat' && <ChatView key={Date.now()} onCarteGenerated={handleCarteGenerated} />}
+            {view === 'dashboard' && <DashboardView cartes={cartes} onStartNew={handleStartNew} onClearData={handleClearData} highlightId={currentCarteId} />}
+          </>
+        )}
       </main>
     </div>
   );
