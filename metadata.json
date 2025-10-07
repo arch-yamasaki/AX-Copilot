@@ -1,0 +1,5 @@
+{
+  "name": "AX Copilot",
+  "description": "An interactive web application to help businesses identify, analyze, and prioritize tasks for AI-driven automation. Users engage with a chatbot to create detailed 'business cartes' which are then displayed on a dynamic, modern dashboard for strategic review.",
+  "requestFramePermissions": []
+}
