@@ -1,13 +1,17 @@
 import { auth } from './firebaseClient';
 import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 
-const ALLOWED_DOMAIN = (import.meta as any).env.VITE_ALLOWED_DOMAIN || 'example.com';
+const RAW_ALLOWED = (import.meta as any).env.VITE_ALLOWED_EMAIL_DOMAINS || (import.meta as any).env.VITE_ALLOWED_DOMAIN || 'example.com';
+const ALLOWED_DOMAINS: string[] = String(RAW_ALLOWED)
+  .split(',')
+  .map((d: string) => d.trim().toLowerCase())
+  .filter((d: string) => d.length > 0);
 
 export const signInWithGoogle = async (): Promise<User> => {
   const provider = new GoogleAuthProvider();
   const cred = await signInWithPopup(auth, provider);
   const email = cred.user.email || '';
-  if (!email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+  if (!isAllowedEmail(email)) {
     await signOut(auth);
     throw new Error('許可されていないドメインです');
   }
@@ -20,7 +24,9 @@ export const observeAuth = (cb: (user: User | null) => void) => onAuthStateChang
 
 export const isAllowedEmail = (email?: string | null): boolean => {
   if (!email) return false;
-  return email.endsWith(`@${ALLOWED_DOMAIN}`);
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return false;
+  return ALLOWED_DOMAINS.includes(domain);
 };
 
 

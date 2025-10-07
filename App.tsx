@@ -116,14 +116,7 @@ const App: React.FC = () => {
                 </button>
               </>
             )}
-            {!user ? (
-              <button
-                onClick={() => signInWithGoogle().catch(err => console.error(err))}
-                className="px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 text-white hover:bg-green-700"
-              >
-                ログイン
-              </button>
-            ) : (
+            {user && (
               <button
                 onClick={() => signOutApp().catch(err => console.error(err))}
                 className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300"
