@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { ChatMessage, Carte } from '../types';
-import { createChat, generateCarteData } from '../services/geminiService';
+import { createChat, generateCarteData } from '../services/aiLogic';
 import { Chat } from '@google/genai';
 
 const GENERATE_COMMAND = '[GENERATE_CARTE]';

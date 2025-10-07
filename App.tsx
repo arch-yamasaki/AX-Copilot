@@ -1,51 +1,16 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import type { User } from 'firebase/auth';
 import { Carte } from './types';
 import ChatView from './components/ChatView';
 import DashboardView from './components/DashboardView';
 import { LogoIcon } from './components/icons/LogoIcon';
+import { observeAuth, signInWithGoogle, signOutApp, isAllowedEmail } from './services/authService';
+import { listCartes, addCarte as addCarteRepo, deleteAllCartes as deleteAllCartesRepo } from './services/carteRepository';
 
 type View = 'chat' | 'dashboard';
 
-// --- Service Layer Simulation ---
-// This section simulates an async API service for managing cartes.
-// It currently uses localStorage but can be easily swapped for a real backend API.
-
-const STORAGE_KEY = 'ax_copilot_cartes';
-
-const fakeApiCall = <T,>(data: T, delay = 100): Promise<T> =>
-  new Promise(resolve => setTimeout(() => resolve(data), delay));
-
-const fetchCartesFromStorage = async (): Promise<Carte[]> => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const cartes = saved ? JSON.parse(saved) : [];
-    return fakeApiCall(cartes);
-  } catch (e) {
-    console.error("Failed to load cartes:", e);
-    return fakeApiCall([]);
-  }
-};
-
-const saveCartesToStorage = async (cartes: Carte[]): Promise<Carte[]> => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cartes));
-    return fakeApiCall(cartes);
-  } catch (e) {
-    console.error("Failed to save cartes:", e);
-    throw new Error("Could not save cartes.");
-  }
-};
-
-const clearCartesInStorage = async (): Promise<void> => {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-    await fakeApiCall(undefined);
-  } catch (e) {
-    console.error("Failed to clear cartes:", e);
-    throw new Error("Could not clear cartes.");
-  }
-};
-// --- End of Service Layer Simulation ---
+// --- Firebase-backed Service Layer ---
+// Firestoreに置き換えた実装。可読性のため薄いラップのみ。
 
 const LoadingScreen: React.FC = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
@@ -59,58 +24,66 @@ const App: React.FC = () => {
   const [cartes, setCartes] = useState<Carte[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentCarteId, setCurrentCarteId] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const loadInitialData = async () => {
+    // 認証状態を監視し、ログイン済みならFirestoreからカルテを読み込む
+    const unsub = observeAuth(async (u) => {
       setIsLoading(true);
       try {
-        const fetchedCartes = await fetchCartesFromStorage();
-        setCartes(fetchedCartes);
-        if (fetchedCartes.length > 0) {
-          setView('dashboard');
+        setUser(u);
+        if (u) {
+          if (!isAllowedEmail(u.email)) {
+            await signOutApp();
+            setCartes([]);
+            setView('chat');
+          } else {
+            const fetched = await listCartes(u.uid);
+            setCartes(fetched);
+            setView(fetched.length > 0 ? 'dashboard' : 'chat');
+          }
         } else {
+          setCartes([]);
           setView('chat');
         }
       } catch (e) {
-        console.error("Failed to fetch cartes", e);
-        setView('chat'); // Fallback to chat view on error
+        console.error('Failed to load data', e);
+        setView('chat');
       } finally {
         setIsLoading(false);
       }
-    };
-    loadInitialData();
+    });
+    return () => unsub();
   }, []);
 
   const handleCarteGenerated = useCallback(async (newCarte: Carte) => {
+    if (!user) return;
     try {
-      const currentCartes = await fetchCartesFromStorage();
-      const updatedCartes = [...currentCartes, newCarte];
-      await saveCartesToStorage(updatedCartes);
-      setCartes(updatedCartes);
+      await addCarteRepo(user.uid, newCarte);
+      setCartes(prev => [...prev, newCarte]);
       setCurrentCarteId(newCarte.業務ID);
       setView('dashboard');
     } catch (e) {
-      console.error("Failed to add carte", e);
-      // Optionally show an error message to the user
+      console.error('Failed to add carte', e);
     }
-  }, []);
+  }, [user]);
   
   const handleStartNew = useCallback(() => {
     setView('chat');
   }, []);
 
   const handleClearData = useCallback(async () => {
+    if (!user) return;
     if (window.confirm('本当にすべての業務カルテを削除しますか？この操作は元に戻せません。')) {
       try {
-        await clearCartesInStorage();
+        await deleteAllCartesRepo(user.uid);
         setCartes([]);
-        setView('chat'); 
+        setView('chat');
       } catch (e) {
-        console.error("Failed to clear data", e);
-        // Optionally show an error message
+        console.error('Failed to clear data', e);
       }
     }
-  }, []);
+  }, [user]);
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -138,6 +111,21 @@ const App: React.FC = () => {
             >
               カルテダッシュボード
             </button>
+            {!user ? (
+              <button
+                onClick={() => signInWithGoogle().catch(err => console.error(err))}
+                className="px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 text-white hover:bg-green-700"
+              >
+                ログイン
+              </button>
+            ) : (
+              <button
+                onClick={() => signOutApp().catch(err => console.error(err))}
+                className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                ログアウト
+              </button>
+            )}
           </div>
         </nav>
       </header>
