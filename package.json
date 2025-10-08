@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "deploy:all": "firebase deploy",
+    "deploy:all": "vite build & firebase deploy",
     "deploy:rules": "firebase deploy --only firestore:rules",
     "preview": "vite preview"
   },

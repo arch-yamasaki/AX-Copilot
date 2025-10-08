@@ -8,6 +8,7 @@ import HomeView from './components/HomeView';
 import Flash from './components/Flash';
 import { observeAuth, signInWithGoogle, signOutApp, isAllowedEmail } from './services/authService';
 import { listCartes, addCarte as addCarteRepo, deleteAllCartes as deleteAllCartesRepo } from './services/carteRepository';
+import { isEmailAllowed as checkEmailAllowed } from './services/securityService';
 
 type View = 'chat' | 'dashboard';
 
@@ -40,7 +41,8 @@ const App: React.FC = () => {
       try {
         setUser(u);
         if (u) {
-          if (!isAllowedEmail(u.email)) {
+          const allowed = await checkEmailAllowed(u.email);
+          if (!allowed) {
             await signOutApp();
             setCartes([]);
             setView('chat');

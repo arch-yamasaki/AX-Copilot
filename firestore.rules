@@ -4,15 +4,16 @@ service cloud.firestore {
     function isOwner(uid) {
       return request.auth != null && request.auth.uid == uid;
     }
-    // 複数許可ドメイン（必要に応じて追記）
-    function emailDomainAllowed() {
+
+    // 登録制（メール個別許可）: allowlist/{email} が存在すること
+    function emailAllowed() {
       return request.auth != null &&
-             request.auth.token.email.matches(".*@(genbaai\\.com|gmail\\.com)$");
+             exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email));
     }
 
     // アプリが使う領域：users/{uid}/** のみ
     match /users/{uid}/{document=**} {
-      allow read, write: if isOwner(uid) && emailDomainAllowed();
+      allow read, write: if isOwner(uid) && emailAllowed();
     }
   }
 }
