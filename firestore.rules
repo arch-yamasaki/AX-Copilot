@@ -11,6 +11,12 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email));
     }
 
+    // 本人のみ allowlist/{email} を参照できるようにする（暫定案B）
+    match /allowlist/{email} {
+      allow read: if request.auth != null && request.auth.token.email == email;
+      allow write: if false; // 管理者操作のみ（Functions等）
+    }
+
     // アプリが使う領域：users/{uid}/** のみ
     match /users/{uid}/{document=**} {
       allow read, write: if isOwner(uid) && emailAllowed();
