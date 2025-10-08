@@ -26,7 +26,12 @@ const HomeView: React.FC<Props> = ({ onFlash }) => {
         </p>
         <div className="mt-8">
           <button
-            onClick={() => signInWithGoogle().catch(console.error)}
+            onClick={() =>
+              signInWithGoogle().catch((e) => {
+                const msg = (e && e.message) ? String(e.message) : 'ログインに失敗しました';
+                onFlash?.(msg, 'error');
+              })
+            }
             className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm"
           >
             Googleでログイン
