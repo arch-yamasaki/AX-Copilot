@@ -137,10 +137,19 @@ const App: React.FC = () => {
         </nav>
       </header>
 
+      {flash && (
+        <div className="fixed top-16 left-0 right-0 z-50 pointer-events-none">
+          <div className="flex justify-center">
+            <div className="pointer-events-auto">
+              <Flash message={flash.msg} type={flash.type} onClose={() => setFlash(null)} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="flex-grow pt-20">
-        {flash && <Flash message={flash.msg} type={flash.type} onClose={() => setFlash(null)} />}
         {!user ? (
-          <HomeView />
+          <HomeView onFlash={showFlash} />
         ) : (
           <>
             {view === 'chat' && <ChatView key={Date.now()} onCarteGenerated={handleCarteGenerated} />}

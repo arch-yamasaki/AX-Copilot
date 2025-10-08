@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { LogoIcon } from './icons/LogoIcon';
 import { signInWithGoogle, sendEmailLink, isEmailLink, completeEmailLinkSignIn } from '../services/authService';
 
-const HomeView: React.FC = () => {
+interface Props { onFlash?: (msg: string, type?: 'info'|'success'|'error') => void }
+
+const HomeView: React.FC<Props> = ({ onFlash }) => {
   const [email, setEmail] = useState('');
 
   // 自動リンク完了: メールの魔法リンクで遷移してきた場合に自動サインイン
@@ -44,7 +46,12 @@ const HomeView: React.FC = () => {
               />
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => email && sendEmailLink(email).catch(console.error)}
+                  onClick={() => {
+                    if (!email) return;
+                    sendEmailLink(email)
+                      .then(() => onFlash?.('ログインリンクを送信しました', 'success'))
+                      .catch((e) => onFlash?.('リンク送信に失敗しました', 'error'));
+                  }}
                   className="px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-semibold hover:bg-gray-900"
                 >
                   リンクを送信
