@@ -40,9 +40,12 @@ const HomeView: React.FC<Props> = ({ onFlash }) => {
 
         <div className="mt-8 text-left max-w-md mx-auto">
           <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-            <h2 className="text-sm font-bold text-gray-700 mb-3">メールリンクでログイン</h2>
-            <div className="text-xs text-gray-500">※ メールにリンクが届くまで、2~3分程かかる場合があります</div>
-            <div className="text-xs text-gray-500 mb-2">※ 迷惑メールに届く場合が多いので、迷惑フォルダを確認してください</div>
+            <h2 className="text-sm font-bold text-gray-700 mb-3">メールでログイン</h2>
+            <div className="my-2 text-xs text-gray-500">
+              <div className="mb-2">※ 入力したメールにリンクが送信されます。そちらのリンクをクリックすることでログインができます。</div>
+              <div>※ メールにリンクが届くまで、2~3分程かかる場合があります</div>
+              <div className="mb-2">※ 迷惑メールに届く場合が多いので、迷惑フォルダを確認してください</div>
+            </div>
             <div className="space-y-3">
               <input
                 type="email"
@@ -51,7 +54,7 @@ const HomeView: React.FC<Props> = ({ onFlash }) => {
                 placeholder="メールアドレス"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2  justify-center">
                 <button
                   onClick={() => {
                     if (!email) return;
