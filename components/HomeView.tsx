@@ -41,6 +41,8 @@ const HomeView: React.FC<Props> = ({ onFlash }) => {
         <div className="mt-8 text-left max-w-md mx-auto">
           <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
             <h2 className="text-sm font-bold text-gray-700 mb-3">メールリンクでログイン</h2>
+            <div className="text-xs text-gray-500">※ メールにリンクが届くまで、2~3分程かかる場合があります</div>
+            <div className="text-xs text-gray-500 mb-2">※ 迷惑メールに届く場合が多いので、迷惑フォルダを確認してください</div>
             <div className="space-y-3">
               <input
                 type="email"
