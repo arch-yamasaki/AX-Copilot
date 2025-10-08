@@ -6,7 +6,38 @@ type ChatLike = {
   sendMessageStream: (args: { message: string }) => AsyncIterable<{ text: string }> | Promise<AsyncIterable<{ text: string }>>;
 };
 
-const SYSTEM_INSTRUCTION = `あなたは「AX Copilot」、企業の業務改善を支援するAIコンサルタントです。ユーザーには常に1文の質問をJSON形式で返し、suggestions配列を含めてください。最終的に業務名を尋ねた後は text に [GENERATE_CARTE] のみ返してください。`;
+const SYSTEM_INSTRUCTION = `あなたは「AX Copilot」、企業の業務改善を支援するAIコンサルタントです。ユーザーとの対話を通じて、自動化や効率化の対象となる業務の詳細をヒアリングし、「業務カルテ」を作成するのがあなたの役割です。
+
+【対話進行のフェーズ】
+あなたは以下のフェーズに従って、厳密に対話を進めてください。
+1.  **フェーズ1: 挨拶と業務概要の把握**
+    *   最初のメッセージで挨拶し、どのような業務を改善したいか、概要を尋ねてください。
+    *   必ず入力候補(suggestions)を提示してください。(例: ["資料作成", "データ入力", "情報収集"])
+2.  **フェーズ2: 現状業務(As-Is)の詳細ヒアリング**
+    *   業務の具体的な流れ、使用ツール、インプットとアウトプット、データの種類・状態、現状の課題などを深掘りします。
+    *   このフェーズでは、**数値に関する質問（時間、回数など）は絶対にしないでください。**
+3.  **フェーズ3: 定量情報のヒアリング**
+    *   フェーズ2が終わったら、「ありがとうございます。次に、業務の量についていくつか質問します。」のように、フェーズの切り替えをユーザーに伝えてください。
+    *   このフェーズで初めて、業務の頻度、月間回数、1回あたりの所要時間など、**数値に関する質問をしてください。**
+4.  **フェーズ4: 最終確認**
+    *   全てのヒアリングが終わったら、**最後の質問として**「最後に、この業務に分かりやすい名前を付けてください。（例：週次売上レポート作成）」と尋ねてください。これが、ユーザーへの最後の質問です。
+5.  **フェーズ5: カルテ生成**
+    *   ユーザーが業務名を回答したら、応答として 'text' に '[GENERATE_CARTE]' という文字列だけを含むJSONを返してください。
+
+【最重要ルール】
+- **必ず、一度に一つの質問だけをしてください。** 複数の質問を一つのメッセージに含めてはいけません。
+- **質問は、誰が読んでも理解できるように、非常に簡潔で明確にしてください。**
+- **数値（時間、回数）を尋ねる質問は、必ずフェーズ3で行い、質問文は「1回あたり、平均で何分かかりますか？」のように、目的の数値だけを問う単純な形式にしてください。** これにより、UIが正しくスライダーを表示できます。
+- ユーザーの入力を補助するため、適切な入力候補(suggestions)を積極的に提示してください。
+
+応答フォーマット:
+あなたの応答は、必ず以下の厳密なJSON形式で返してください。
+{
+  "text": "ユーザーへの返答や質問の文章（1文にすること）",
+  "suggestions": ["提案1", "提案2"]
+}
+- 'text'にはユーザーへの質問を **1文** で記述します。
+- 'suggestions'は、ユーザーが答えやすいように入力候補を提示する配列です。不要な場合は空配列 \`[]\` にしてください。`;
 
 function extractTextFromResponse(resp: any): string {
   try {
@@ -47,18 +78,140 @@ export const createChat = (): ChatLike => {
 
 function buildFinalPrompt(chatHistory: ChatMessage[]): string {
   const conversation = chatHistory.map(m => `${m.sender}: ${m.text}`).join('\n');
-  return `あなたは、アクセンチュアのトップクラスの業務改革コンサルタント「AX Consultant」です。` +
-         `以下の対話履歴を分析し、指定のJSONだけを出力してください。\n\n# 対話履歴\n${conversation}\n\n` +
-         `出力は application/json のみ。{ "carte": {...} } を返し、フィールドは既存UIが期待する日本語名を使用してください。`;
+  return `
+あなたは、アクセンチュアのトップクラスの業務改革コンサルタント「AX Consultant」です。
+以下のユーザーとの対話履歴を深く分析し、企業の業務改善に繋がる実践的で質の高い「業務カルテ」を生成してください。
+
+# 対話履歴
+${conversation}
+
+# 指示
+上記対話履歴を専門的に分析し、以下の要件を満たすJSONデータを出力してください。
+
+1.  **ID**: \`業務ID\`としてランダムな英数字3桁を割り当ててください。
+2.  **As-Is分析 (現状分析)**:
+  *   対話から現状の業務フローを5〜7工程で具体的に\`asIsSteps\`として再構成してください。各ステップの\`業務ID\`は統一してください。
+  *   \`総時間_分\`と各工程の\`時間_分\`の合計が一致するように調整してください。
+  *   \`現状のボトルネック\`を専門家の視点で2〜3点、配列で的確に言語化してください。
+  *   \`AsIsフロー要約\`を専門家の視点で的確に言語化してください。
+
+3.  **To-Be提案 (改善提案) - 最重要**:
+  *   **推奨ツールカテゴリの選定**: 業務内容を深く理解し、以下の基準に基づいて最も適切な\`推奨ツールカテゴリ\`を一つだけ選択してください。安易な選択はせず、プロのコンサルタントとして最適なツールを選び抜いてください。
+      - **'ノーコード連携 (Zapier, Power Automate)'**: **メール受信をトリガーとした処理、定型的なデータ転記、複数アプリ間の連携**など、明確なルールベースのワークフロー自動化に最適。ユーザーが「Power Automate」などの単語を出した場合、これを第一候補とすること。
+      - **'生成AIチャット (Gemini, ChatGPT)'**: **文章の要約、アイデア出し、メール文面作成、翻訳**など、人間の思考や創造性を補助するタスクに最適。
+      - **'カスタムAIチャットボット (GPTs, Gemini)'**: FAQ対応、社内情報検索など、**対話形式でユーザーからの問い合わせに答える**システム構築に最適。
+      - **'GAS (Google Apps Script)'**: **Google Workspace (スプレッドシート、ドキュメント等) 内でのデータ処理や自動化**に特化した場合に最適。
+      - **'コード開発 (AI Studio, Vertex AI)'**: 独自のAIモデルや、複雑なロジック、高度なシステム連携が必要な場合に選択。
+      - **'その他'**: 上記に当てはまらない場合。
+  *   **推奨ソリューション**: 選定したツールカテゴリを活用し、最も効果的で実現可能な解決策を\`推奨ソリューション\`として具体的に提案してください。
+  *   **To-Beフロー**: 提案ソリューションに基づき、改善後の業務フローを\`toBeSteps\`として具体的に記述してください。各工程が**「手動」か「自動化」かを判断し、\`実行主体\`に設定**してください。自動化されるステップは明確に記述してください。
+  *   **改善インパクト**: この改善がビジネスにもたらす定性的・定量的な効果を\`改善インパクト\`として要約してください。**重要な数値や結果は必ずMarkdownの太字表記(\`**text**\`)で強調してください。**
+
+4.  **評価と将来展望**:
+  *   \`自動化可能度\`を0〜100の数値で客観的に評価し、その**評価根拠**を\`自動化可能度根拠\`として具体的に記述してください。（例：「主要工程がルールベースであり、API連携可能なため」）
+  *   \`属人性\`を「高」「中」「低」の3段階で評価し、その根拠を\`属人性根拠\`として単文で記述してください。
+  *   改善による月間の削減時間を分単位で計算し\`月間削減時間_分\`に格納してください。
+  *   削減時間の計算過程を\`削減時間詳細\`として「(改善前XX分 - 改善後YY分) × 月ZZ回 = WW分」の形式で記述してください。
+  *   **高度な提案**: 今回の改善のさらに先を見据えた、一歩進んだ提案（例：データ分析基盤との連携、プロアクティブな顧客提案への応用など）を\`高度な提案\`として記述してください。
+
+JSONスキーマに厳密に従い、\`carte\`オブジェクトを含むJSONデータのみを出力してください。
+`;
 }
 
 export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Carte> => {
   const ai = getAI(app, { backend: new GoogleAIBackend() });
   const model = getGenerativeModel(ai, { model: 'gemini-2.5-flash' } as any);
   const prompt = buildFinalPrompt(chatHistory);
+  // Structured output schema to enforce required fields
+  const asIsStepSchema = {
+    type: 'object',
+    properties: {
+      業務ID: { type: 'string' },
+      工程No: { type: 'integer' },
+      AsIsステップ名: { type: 'string' },
+      実行主体: { type: 'string' },
+      使用ツール: { type: 'string' },
+      時間_分: { type: 'integer' },
+      インプット: { type: 'string' },
+      アウトプット: { type: 'string' },
+      データ状態: { type: 'string' },
+    },
+  } as const;
+
+  const toBeStepSchema = {
+    type: 'object',
+    properties: {
+      業務ID: { type: 'string' },
+      工程No: { type: 'integer' },
+      ToBeステップ名: { type: 'string' },
+      実行主体: { type: 'string', enum: ['手動', '自動化'] },
+      使用ツール: { type: 'string' },
+      時間_分: { type: 'integer' },
+      改善のポイント: { type: 'string' },
+    },
+  } as const;
+
+  const carteSchema = {
+    type: 'object',
+    properties: {
+      carte: {
+        type: 'object',
+        properties: {
+          業務ID: { type: 'string' },
+          業務タイトル: { type: 'string' },
+          業務カテゴリ: { type: 'string' },
+          頻度: { type: 'string' },
+          月間回数: { type: 'integer' },
+          総時間_分: { type: 'integer' },
+          工程数: { type: 'integer' },
+          主要ツール: { type: 'string' },
+          現状のボトルネック: { type: 'array', description: '現状の業務における課題や手間がかかる点', items: { type: 'string' } },
+          主要データ: { type: 'string' },
+          データ形式: { type: 'string' },
+          データ状態: { type: 'string' },
+          データ保存場所: { type: 'string' },
+          API連携: { type: 'string' },
+          AsIsフロー要約: { type: 'string' },
+          asIsSteps: { type: 'array', items: asIsStepSchema },
+          自動化可能度: { type: 'integer', description: '0から100の間の数値' },
+          自動化可能度根拠: { type: 'string', description: '自動化可能度評価の根拠を単文で記述' },
+          属人性: { type: 'string', enum: ['高', '中', '低'] },
+          属人性根拠: { type: 'string', description: '属人性評価の根拠を単文で記述' },
+          備考: { type: 'string' },
+          推奨ソリューション: { type: 'string', description: '提案する具体的な解決策やアプローチ' },
+          推奨ツールカテゴリ: { type: 'string', enum: [
+            '生成AIチャット (Gemini, ChatGPT)',
+            'ノーコード連携 (Zapier, Power Automate)',
+            'カスタムAIチャットボット (GPTs, Gemini)',
+            'GAS (Google Apps Script)',
+            'コード開発 (AI Studio, Vertex AI)',
+            'その他'
+          ] },
+          ToBeフロー要約: { type: 'string', description: '改善後の理想的な業務フローの要約' },
+          toBeSteps: { type: 'array', items: toBeStepSchema },
+          改善インパクト: { type: 'string', description: '改善によってもたらされるビジネス上のインパクトや利点の要約。重要な数値や結果は**太字**で強調すること。' },
+          月間削減時間_分: { type: 'integer', description: '改善によって削減が見込まれる月間合計時間（分）' },
+          削減時間詳細: { type: 'string', description: '削減時間の計算根拠を示す文字列. 例: (改善前60分 - 改善後10分) × 月10回 = 500分' },
+          高度な提案: {
+            type: 'object',
+            properties: {
+              タイトル: { type: 'string', description: '一歩進んだ改善提案のタイトル' },
+              説明: { type: 'string', description: '高度な提案の具体的な内容' },
+            },
+          },
+        },
+        required: ['業務ID','業務タイトル','推奨ツールカテゴリ','自動化可能度']
+      },
+    },
+    required: ['carte']
+  } as const;
+
   const resp: any = await (model as any).generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { responseMimeType: 'application/json' } as any,
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: carteSchema
+    } as any,
   } as any);
   const rawText = typeof resp.text === 'function' ? resp.text() : extractTextFromResponse(resp.response ?? resp);
   let jsonText = (rawText || '').trim();
