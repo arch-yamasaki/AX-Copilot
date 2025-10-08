@@ -77,89 +77,34 @@ VITE_GEMINI_FUNCTION_NAME=generateCarte   # callable function 名 (例)
 ```
 > `.env.local` は `.gitignore` 済みです。そのままコミットしないでください。
 
-### Cloud Functions 側
-将来的に Gemini API 呼び出しを Functions へ移す際は、以下いずれかの方法でキーを安全に保持します。
-1. `.runtimeconfig.json` / `firebase functions:config:set` を使用
-   ```sh
-   firebase functions:config:set gemini.api_key="your-gemini-api-key"
-   ```
-2. `functions/.env`（Functions v2 の dotenv 対応）に記入し、`.gitignore` を確認
-
----
-
-## 3. ローカル開発
+## 2. ローカル開発
 1. 依存関係インストール
    ```sh
    pnpm install
    # または npm install
    ```
-2. (任意) Firebase Emulator を動かす場合
-   ```sh
-   firebase emulators:start --only auth,firestore,functions
-   ```
-3. フロントエンド開発サーバー起動
+2. フロントエンド開発サーバー起動
    ```sh
    pnpm dev
    # npm run dev でも可
    ```
-4. ブラウザで [http://localhost:3000](http://localhost:3000) を開く
+3. ブラウザで [http://localhost:3000](http://localhost:3000) を開く
 
 > 現時点ではカルテ保存が `localStorage` ベースです。Firebase 連携後は `services/` 配下に追加するリポジトリ層を通じて Firestore を利用する想定です。
 
 ---
 
 
+## 3. デプロイ
 
-## 4. デプロイ
-
-### 5-1. Firebase Hosting + Cloud Functions
+### 3-1. Firebase Hosting 
 1. ビルド
    ```sh
-   pnpm build
+   pnpm deploy:all
    ```
-2. Cloud Functions をデプロイ（Gemini 連携を追加した場合）
+2. ルールだけ
    ```sh
-   firebase deploy --only functions
+   pnpm deploy:rules
    ```
-3. フロントを Hosting へデプロイ
-   ```sh
-   firebase deploy --only hosting
-   ```
-4. 必要に応じて Firebase Hosting のリライトルールで API を Cloud Functions / Cloud Run へ転送
-5. ドメイン制限が必要な場合
-   - Auth Blocking Functions で許可ドメインのみ通す
-   - さらに厳格化したい場合は Cloud IAP + Allowed Domains を併用
 
-### 5-2. Cloud Run（オプション）
-Firebase Hosting ではなく Cloud Run から配信したい場合は、次の Docker 流れを取ります。
-1. ルートに `Dockerfile` を作成（例: Node.js か Nginx で `dist` を配信）
-2. コンテナビルド・プッシュ
-   ```sh
-   gcloud builds submit --tag "gcr.io/PROJECT_ID/ax-copilot"
-   ```
-3. Cloud Run へデプロイ
-   ```sh
-   gcloud run deploy ax-copilot \
-     --image "gcr.io/PROJECT_ID/ax-copilot" \
-     --platform managed \
-     --region asia-northeast1 \
-     --allow-unauthenticated
-   ```
-4. IAP で保護する場合は HTTPS ロードバランサを経由し、Allowed Domains で社内ドメインに限定
 
----
-
-## 6. トラブルシューティング
-- **Gemini API 401**: `.env.local` の `GEMINI_API_KEY` または Functions 側のキー設定を確認
-- **Firebase Auth でドメイン制限が効かない**: Blocking Functions のデプロイ状況や正規表現を再確認
-- **Firestore Permission denied**: ルールに許可ドメイン条件を入れている場合、`request.auth.token.email` が期待通りか Emulator で確認
-- **Cloud Run からの配信が 502 になる**: `PORT` 環境変数でアプリがリッスンしているか、`npm run preview` でローカルチェック
-
----
-
-## 参考リンク
-- [Firebase CLI Documentation](https://firebase.google.com/docs/cli)
-- [Firebase Auth Blocking Functions](https://firebase.google.com/docs/functions/auth-blocking-events)
-- [Cloud IAP Allowed Domains](https://cloud.google.com/iap/docs/allowed-domains)
-- [Deploying React Apps to Cloud Run](https://cloud.google.com/run/docs/quickstarts/build-and-deploy)
-- [Google AI Studio](https://ai.google.dev/)
