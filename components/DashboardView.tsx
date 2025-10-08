@@ -288,6 +288,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ cartes, onStartNew, onCle
         const savingsPotential = highPriorityCartes.reduce((acc, c) => acc + (c.月間削減時間_分 || 0), 0);
         
         const priorityCounts = cartes.reduce((acc, c) => {
+            console.log(`c.業務タイトル : ${c.業務タイトル}, c.総時間_分: ${c.総時間_分}, c.月間回数: ${c.月間回数}, c.月間削減時間_分: ${c.月間削減時間_分}`);
             const { letter } = getPriorityStyles(c.自動化可能度);
             acc[letter] = (acc[letter] || 0) + 1;
             return acc;

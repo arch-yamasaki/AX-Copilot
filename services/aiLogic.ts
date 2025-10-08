@@ -110,7 +110,7 @@ ${conversation}
 4.  **評価と将来展望**:
   *   \`自動化可能度\`を0〜100の数値で客観的に評価し、その**評価根拠**を\`自動化可能度根拠\`として具体的に記述してください。（例：「主要工程がルールベースであり、API連携可能なため」）
   *   \`属人性\`を「高」「中」「低」の3段階で評価し、その根拠を\`属人性根拠\`として単文で記述してください。
-  *   改善による月間の削減時間を分単位で計算し\`月間削減時間_分\`に格納してください。
+  *   改善による月間の削減時間/回を分単位で計算し\`月間削減時間_分\`に格納してください。
   *   削減時間の計算過程を\`削減時間詳細\`として「(改善前XX分 - 改善後YY分) × 月ZZ回 = WW分」の形式で記述してください。
   *   **高度な提案**: 今回の改善のさらに先を見据えた、一歩進んだ提案（例：データ分析基盤との連携、プロアクティブな顧客提案への応用など）を\`高度な提案\`として記述してください。
 
@@ -162,7 +162,7 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
           業務カテゴリ: { type: 'string' },
           頻度: { type: 'string' },
           月間回数: { type: 'integer' },
-          総時間_分: { type: 'integer' },
+          総時間_分: { type: 'integer', description: '該当業務を1回やるのにかかる総時間（分）。基本的に、ユーザの回答をそのまま入れればよい。' },
           工程数: { type: 'integer' },
           主要ツール: { type: 'string' },
           現状のボトルネック: { type: 'array', description: '現状の業務における課題や手間がかかる点', items: { type: 'string' } },
@@ -190,7 +190,7 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
           ToBeフロー要約: { type: 'string', description: '改善後の理想的な業務フローの要約' },
           toBeSteps: { type: 'array', items: toBeStepSchema },
           改善インパクト: { type: 'string', description: '改善によってもたらされるビジネス上のインパクトや利点の要約。重要な数値や結果は**太字**で強調すること。' },
-          月間削減時間_分: { type: 'integer', description: '改善によって削減が見込まれる月間合計時間（分）' },
+          月間削減時間_分: { type: 'integer', description: '改善によって削減が見込まれる月間合計時間（分）。' },
           削減時間詳細: { type: 'string', description: '削減時間の計算根拠を示す文字列. 例: (改善前60分 - 改善後10分) × 月10回 = 500分' },
           高度な提案: {
             type: 'object',
