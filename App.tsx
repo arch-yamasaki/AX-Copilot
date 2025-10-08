@@ -5,6 +5,7 @@ import ChatView from './components/ChatView';
 import DashboardView from './components/DashboardView';
 import { LogoIcon } from './components/icons/LogoIcon';
 import HomeView from './components/HomeView';
+import Flash from './components/Flash';
 import { observeAuth, signInWithGoogle, signOutApp, isAllowedEmail } from './services/authService';
 import { listCartes, addCarte as addCarteRepo, deleteAllCartes as deleteAllCartesRepo } from './services/carteRepository';
 
@@ -25,6 +26,11 @@ const App: React.FC = () => {
   const [cartes, setCartes] = useState<Carte[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentCarteId, setCurrentCarteId] = useState<string | null>(null);
+  const [flash, setFlash] = useState<{ msg: string; type: 'info'|'success'|'error' } | null>(null);
+
+  const showFlash = useCallback((msg: string, type: 'info'|'success'|'error' = 'info') => {
+    setFlash({ msg, type });
+  }, []);
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
@@ -38,6 +44,7 @@ const App: React.FC = () => {
             await signOutApp();
             setCartes([]);
             setView('chat');
+            showFlash('許可されていないドメインのためアクセスできません', 'error');
           } else {
             const fetched = await listCartes(u.uid);
             setCartes(fetched);
@@ -118,7 +125,7 @@ const App: React.FC = () => {
             )}
             {user && (
               <button
-                onClick={() => signOutApp().catch(err => console.error(err))}
+                onClick={() => signOutApp().then(() => showFlash('ログアウトしました', 'info')).catch(err => console.error(err))}
                 className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300"
               >
                 ログアウト
@@ -129,6 +136,7 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-grow pt-20">
+        {flash && <Flash message={flash.msg} type={flash.type} onClose={() => setFlash(null)} />}
         {!user ? (
           <HomeView />
         ) : (
