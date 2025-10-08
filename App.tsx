@@ -6,7 +6,7 @@ import DashboardView from './components/DashboardView';
 import { LogoIcon } from './components/icons/LogoIcon';
 import HomeView from './components/HomeView';
 import Flash from './components/Flash';
-import { observeAuth, signInWithGoogle, signOutApp, isAllowedEmail } from './services/authService';
+import { observeAuth, signInWithGoogle, signOutApp } from './services/authService';
 import { listCartes, addCarte as addCarteRepo, deleteAllCartes as deleteAllCartesRepo } from './services/carteRepository';
 import { isEmailAllowed as checkEmailAllowed } from './services/securityService';
 
@@ -46,7 +46,7 @@ const App: React.FC = () => {
             await signOutApp();
             setCartes([]);
             setView('chat');
-            showFlash('許可されていないドメインのためアクセスできません', 'error');
+            showFlash('許可されていないドメインまたはアドレスのためアクセスできません。管理者までご連絡ください', 'error');
           } else {
             const fetched = await listCartes(u.uid);
             setCartes(fetched);
