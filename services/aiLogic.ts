@@ -30,6 +30,16 @@ const SYSTEM_INSTRUCTION = `あなたは「AX Copilot」、企業の業務改善
 - **数値（時間、回数）を尋ねる質問は、必ずフェーズ3で行い、質問文は「1回あたり、平均で何分かかりますか？」のように、目的の数値だけを問う単純な形式にしてください。** これにより、UIが正しくスライダーを表示できます。
 - ユーザーの入力を補助するため、適切な入力候補(suggestions)を積極的に提示してください。
 
+【内製開発コストの推定ルール】
+- 改善案はユーザー企業が**全て内製で開発**する想定とし、外部委託費用は含めません。
+- 推奨ソリューションを実現するために必要な主要ロール（例: Prompt Engineer, Frontend, Backend, PM）と想定稼働時間を推定し、総開発時間を算出してください。
+- 時給レートは統一して **5,000 JPY/h** を使用します。複数ロールがある場合も平均レートのまま合計時間 × 5,000 JPY/h で金額を計算してください。
+- 工数を見積もる際は、ヒアリングで得た 'monthlyCount'、'totalMinutes'、'numberOfPeople'、'asIsSteps' の複雑度、'recommendedToolCategory' を根拠に、以下の目安を参考に粒度を決めてください。
+  * 'recommendedToolCategory' が 'gas' または 'noCodeTool' かつ 'totalWorkloadMinutesPerMonth < 800' の場合: 20〜60時間から判断。
+  * 'recommendedToolCategory' が 'aiChat' または 'customAiChat' の場合: データ整備・UI構築を考慮して 60〜160時間。
+  * 'recommendedToolCategory' が 'systemDevelopment' または 'other'、もしくは 'totalWorkloadMinutesPerMonth >= 2000' の場合: 160時間以上で段階的に増加させます。
+- 最終JSONには、算出した金額を整数の日本円で格納した 'estimatedInternalCostJPY' フィールドを **必ず含めてください**。テキストによる補足は行わず、JSON値で提示します。
+
 応答フォーマット:
 あなたの応答は、必ず以下の厳密なJSON形式で返してください。
 {
@@ -114,6 +124,12 @@ ${conversation}
   *   削減時間の計算過程を\`削減時間詳細\`として「(改善前XX分 - 改善後YY分) × 月ZZ回 = WW分」の形式で記述してください。
   *   **高度な提案**: 今回の改善のさらに先を見据えた、一歩進んだ提案（例：データ分析基盤との連携、プロアクティブな顧客提案への応用など）を\`高度な提案\`として記述してください。
 
+5.  **内製開発コスト推定**:
+  *   推奨ソリューションを実装するために必要な主要タスクとロールを想定し、総開発時間（時間単位）を見積もってください。
+  *   見積もりでは、業務の複雑度や 'recommendedToolCategory'、'asIsSteps' の工程数、'totalWorkloadMinutesPerMonth' の規模を根拠とします。
+  *   総開発時間に固定レート **5,000 JPY/h** を掛け合わせ、切り上げ処理を行わず整数で金額を算出し、'estimatedInternalCostJPY' に格納してください。
+  *   このフィールドはJSON出力時に必須であり、数値以外の情報を含めてはいけません。
+
 JSONスキーマに厳密に従い、\`carte\`オブジェクトを含むJSONデータのみを出力してください。
 `;
 }
@@ -186,6 +202,7 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
           numberOfPeople: { type: 'integer', description: '当該業務を実施する人数（人）' },
           totalWorkloadMinutesPerMonth: { type: 'integer', description: '組織全体の月間総工数（分）' },
           savedMinuteDetails: { type: 'string', description: '削減時間の計算根拠を示す文字列。例: (改善前60分 - 改善後10分) × 月10回 = 500分' },
+          estimatedInternalCostJPY: { type: 'integer', description: '内製開発にかかる推定費用（日本円・税別）' },
           advancedProposal: {
             type: 'object',
             properties: {
@@ -194,7 +211,7 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
             },
           },
         },
-        required: ['workId','title','recommendedToolCategory','automationScore']
+        required: ['workId','title','recommendedToolCategory','automationScore','estimatedInternalCostJPY']
       },
     },
     required: ['carte']
@@ -222,15 +239,14 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
   const perRunSaved = Math.max(0, totalMinutes - toBeTotal);
   const totalWorkloadMinutesPerMonth = totalMinutes * monthlyCount * numberOfPeople;
   const monthlySavedMinutes = perRunSaved * monthlyCount * numberOfPeople;
+  const estimatedInternalCostJPY = Math.max(0, Math.round(Number(carte.estimatedInternalCostJPY || 0)));
 
   const finalized: Carte = {
     ...carte,
     numberOfPeople,
     totalWorkloadMinutesPerMonth,
     monthlySavedMinutes,
+    estimatedInternalCostJPY,
   };
   return finalized;
 };
-
-
-

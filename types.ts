@@ -41,6 +41,7 @@ export interface Carte {
   toBeSteps: ToBeStep[]; // Embedded To-Be steps
   improvementImpact: string;
   monthlySavedMinutes: number; // per-carte monthly saved minutes
+  estimatedInternalCostJPY: number; // self-build development cost estimate (JPY)
   totalWorkloadMinutesPerMonth?: number; // derived: totalMinutes * monthlyCount * numberOfPeople
   numberOfPeople?: number;
   savedMinuteDetails: string;
