@@ -63,6 +63,12 @@ const formatCurrencyJPY = (value?: number | null) => {
     return value.toLocaleString('ja-JP');
 };
 
+const HUMAN_DEPENDENCY_LABEL: Record<Carte['humanDependency'], string> = {
+    high: '高',
+    medium: '中',
+    low: '低',
+};
+
 const buildSavedMinuteDetails = (carte: Carte) => {
     const toBeTotal = carte.toBeSteps.reduce((sum, step) => sum + step.minutes, 0);
     const people = carte.numberOfPeople ?? 1;
@@ -361,8 +367,8 @@ const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ ca
                         <div className="grid grid-cols-2 gap-4">
                              <div className="p-4 bg-white border rounded-xl shadow-sm text-center">
                                 <label className="text-xs text-gray-500">属人性</label>
-                                <p className="text-3xl font-bold text-gray-800 mt-2">{carte.属人性}</p>
-                                <p className="text-xs text-gray-500 mt-1">{carte.属人性根拠}</p>
+                                <p className="text-3xl font-bold text-gray-800 mt-2">{carte.humanDependency ? HUMAN_DEPENDENCY_LABEL[carte.humanDependency] : '-'}</p>
+                                <p className="text-xs text-gray-500 mt-1">{carte.humanDependencyRationale}</p>
                             </div>
                              <div className="p-4 bg-white border rounded-xl shadow-sm text-center">
                                 <label className="text-xs text-gray-500">月間削減時間</label>

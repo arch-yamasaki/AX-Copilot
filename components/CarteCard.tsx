@@ -32,9 +32,13 @@ const CarteCard: React.FC<CarteCardProps> = ({ carte, onClick, onDelete }) => {
                     </div>
                 </div>
 
-                <div className="my-6 grid grid-cols-2 gap-4 text-center">
+                <div className="my-6 grid grid-cols-3 gap-4 text-center">
                     <div>
-                        <p className="text-xs text-gray-500">自動化ポテンシャル</p>
+                        <p className="text-xs text-gray-500">総業務時間</p>
+                        <p className={`text-3xl font-bold ${priority.text}`}>{Math.round(carte.totalWorkloadMinutesPerMonth / 60 * 10) / 10}<span className="text-lg">h</span></p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-gray-500">自動化可能度</p>
                         <p className={`text-3xl font-bold ${priority.text}`}>{carte.automationScore}<span className="text-lg">%</span></p>
                     </div>
                     <div>
