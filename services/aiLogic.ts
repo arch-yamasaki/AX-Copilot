@@ -161,7 +161,6 @@ const SYSTEM_INSTRUCTION = `あなたは「AX Copilot」、企業の業務改善
 
 【内製開発コストの推定ルール】
 - 改善案はユーザー企業が**全て内製で開発**する想定とし、外部委託費用は含めません。
-- 推奨ソリューションを実現するために必要な主要ロール（例: Prompt Engineer, Frontend, Backend, PM）と想定稼働時間を推定し、総開発時間を算出してください。
 - 時給レートは統一して **5,000 JPY/h** を使用します。複数ロールがある場合も平均レートのまま合計時間 × 5,000 JPY/h で金額を計算してください。
 - 工数を見積もる際は、ヒアリングで得た 'monthlyCount'、'totalMinutes'、'numberOfPeople'、'asIsSteps' の複雑度、'recommendedToolCategory' を根拠に、以下の目安を参考に粒度を決めてください。
   * 'recommendedToolCategory' が '生成AIチャット' または 'カスタムAIチャット' かつ 'totalWorkloadMinutesPerMonth < 800' の場合: 3〜30時間から判断。
