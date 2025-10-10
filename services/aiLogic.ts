@@ -126,15 +126,16 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
   const asIsStepSchema = {
     type: 'object',
     properties: {
-      業務ID: { type: 'string' },
-      工程No: { type: 'integer' },
-      AsIsステップ名: { type: 'string' },
-      実行主体: { type: 'string' },
-      使用ツール: { type: 'string' },
-      時間_分: { type: 'integer' },
-      インプット: { type: 'string' },
-      アウトプット: { type: 'string' },
-      データ状態: { type: 'string' },
+      workId: { type: 'string' },
+      workStepId: { type: 'string' },
+      stepNo: { type: 'integer' },
+      asIsStepName: { type: 'string' },
+      executionRole: { type: 'string' },
+      tool: { type: 'string' },
+      timeMinutes: { type: 'integer' },
+      input: { type: 'string' },
+      output: { type: 'string' },
+      dataState: { type: 'string' },
     },
   } as const;
 

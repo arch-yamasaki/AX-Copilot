@@ -142,7 +142,7 @@ const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ ca
                     <div className="flex items-center gap-4">
                          <div className={`font-bold text-lg px-4 py-1 rounded-full flex items-center ${priority.bg} ${priority.text}`}>
                             優先度: <span className="text-2xl ml-2">{priority.letter}</span>
-                        </div>
+                        </div>/
                         <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors"><XIcon className="h-7 w-7" /></button>
                     </div>
                 </header>
