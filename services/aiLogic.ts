@@ -1,10 +1,139 @@
 import app from './firebaseClient';
-import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';
+import { AIError, GoogleAIBackend, VertexAIBackend, getAI, getGenerativeModel } from 'firebase/ai';
 import { ChatMessage, Carte } from '../types';
 
 type ChatLike = {
   sendMessageStream: (args: { message: string }) => AsyncIterable<{ text: string }> | Promise<AsyncIterable<{ text: string }>>;
 };
+
+type BackendKind = 'vertex' | 'google';
+
+const MODEL_ID = ((import.meta as any).env?.VITE_MODEL_ID as string | undefined) ?? 'gemini-2.5-flash';
+const VERTEX_LOCATION =
+  ((import.meta as any).env?.VITE_VERTEX_LOCATION as string | undefined) ?? 'asia-northeast1';
+
+const vertexBackend = new VertexAIBackend(VERTEX_LOCATION);
+const googleBackend = new GoogleAIBackend();
+
+const aiCache: Partial<Record<BackendKind, ReturnType<typeof getAI>>> = {};
+
+const getBackend = (kind: BackendKind) => {
+  if (!aiCache[kind]) {
+    const backend = kind === 'vertex' ? vertexBackend : googleBackend;
+    aiCache[kind] = getAI(app, { backend });
+  }
+  return aiCache[kind]!;
+};
+
+const shouldFallbackToGoogle = (error: unknown): boolean => {
+  if (error instanceof AIError) {
+    return true;
+  }
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    const code = (error as { code?: string }).code;
+    return typeof code === 'string' && code.startsWith('ai/');
+  }
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return message.includes('fetch') || message.includes('network');
+  }
+  return false;
+};
+
+const runWithFallback = async <T>(task: (kind: BackendKind) => Promise<T>, label: string): Promise<T> => {
+  try {
+    const result = await task('vertex');
+    console.info(`[AI Logic] ${label} handled by Vertex AI backend.`);
+    return result;
+  } catch (error) {
+    if (shouldFallbackToGoogle(error)) {
+      console.warn(`[AI Logic] Vertex AI ${label} failed. Falling back to Gemini Developer API.`, error);
+      const fallbackResult = await task('google');
+      console.info(`[AI Logic] ${label} handled by Gemini Developer API backend.`);
+      return fallbackResult;
+    }
+    throw error;
+  }
+};
+
+type HistoryEntry = { role: 'user' | 'model'; parts: Array<{ text: string }> };
+
+const AS_IS_STEP_SCHEMA = {
+  type: 'object',
+  properties: {
+    workId: { type: 'string' },
+    stepNo: { type: 'integer' },
+    asIsStepName: { type: 'string' },
+    toolUsed: { type: 'string', description: '当該ステップで使用するツール' },
+    minutes: { type: 'integer', description: '当該ステップの作業時間（分）' },
+    input: { type: 'string', description: '当該ステップのインプット' },
+    output: { type: 'string', description: '当該ステップのアウトプット' },
+    dataState: { type: 'string', description: 'データの状態（例: 未整備、整備済み 等）' },
+  },
+} as const;
+
+const TO_BE_STEP_SCHEMA = {
+  type: 'object',
+  properties: {
+    workId: { type: 'string' },
+    stepNo: { type: 'integer' },
+    toBeStepName: { type: 'string' },
+    executorType: { type: 'string', enum: ['manual', 'automated'], description: '実行主体（manual: 手動 / automated: 自動化）' },
+    toolUsed: { type: 'string', description: '当該ステップで使用するツール' },
+    minutes: { type: 'integer', description: '当該ステップの作業時間（分）' },
+    improvementPoint: { type: 'string', description: '改善のポイント（要点）' },
+  },
+} as const;
+
+const CARTE_SCHEMA = {
+  type: 'object',
+  properties: {
+    carte: {
+      type: 'object',
+      properties: {
+        workId: { type: 'string' },
+        title: { type: 'string' },
+        category: { type: 'string' },
+        frequency: { type: 'string' },
+        monthlyCount: { type: 'integer' },
+        totalMinutes: { type: 'integer', description: '該当業務を1回やるのにかかる総時間（分）。asIsSteps の minutes 合計と整合させること。' },
+        numSteps: { type: 'integer' },
+        primaryTool: { type: 'string' },
+        currentBottlenecks: { type: 'array', items: { type: 'string' }, description: '現状の業務における課題や手間がかかる点' },
+        primaryData: { type: 'string' },
+        dataFormat: { type: 'string' },
+        dataState: { type: 'string' },
+        dataStorage: { type: 'string' },
+        apiIntegration: { type: 'string' },
+        asIsSummary: { type: 'string' },
+        asIsSteps: { type: 'array', items: AS_IS_STEP_SCHEMA },
+        automationScore: { type: 'integer', description: '0から100の間の数値' },
+        automationScoreRationale: { type: 'string', description: '自動化可能度評価の根拠を単文で記述' },
+        humanDependency: { type: 'string', enum: ['high', 'medium', 'low'], description: '属人性（high/medium/low のいずれか）' },
+        humanDependencyRationale: { type: 'string', description: '属人性評価の根拠を単文で記述' },
+        notes: { type: 'string' },
+        recommendedSolution: { type: 'string', description: '提案する具体的な解決策やアプローチ' },
+        recommendedToolCategory: { type: 'string', enum: ['aiChat', 'noCodeTool', 'customAiChat', 'gas', 'systemDevelopment', 'other'], description: '指定の列挙値のみを使用（aiChat/noCodeTool/customAiChat/gas/systemDevelopment/other）' },
+        toBeSummary: { type: 'string', description: '改善後の理想的な業務フローの要約' },
+        toBeSteps: { type: 'array', items: TO_BE_STEP_SCHEMA },
+        improvementImpact: { type: 'string', description: '改善によってもたらされるビジネス上のインパクトや利点の要約。重要な数値や結果は必要に応じて強調' },
+        monthlySavedMinutes: { type: 'integer', description: '改善によって削減が見込まれる月間合計時間（分）' },
+        numberOfPeople: { type: 'integer', description: '当該業務を実施する人数（人）' },
+        totalWorkloadMinutesPerMonth: { type: 'integer', description: '組織全体の月間総工数（分）' },
+        estimatedInternalCostJPY: { type: 'integer', description: '内製開発にかかる推定費用（日本円・税別）' },
+        advancedProposal: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: '一歩進んだ改善提案のタイトル' },
+            description: { type: 'string', description: '高度な提案の具体的な内容' },
+          },
+        },
+      },
+      required: ['workId', 'title', 'recommendedToolCategory', 'automationScore', 'estimatedInternalCostJPY'],
+    },
+  },
+  required: ['carte'],
+} as const;
 
 const SYSTEM_INSTRUCTION = `あなたは「AX Copilot」、企業の業務改善を支援するAIコンサルタントです。ユーザーとの対話を通じて、自動化や効率化の対象となる業務の詳細をヒアリングし、「業務カルテ」を作成するのがあなたの役割です。
 
@@ -63,25 +192,31 @@ function extractTextFromResponse(resp: any): string {
 }
 
 export const createChat = (): ChatLike => {
-  const ai = getAI(app, { backend: new GoogleAIBackend() });
-  const model = getGenerativeModel(ai, { model: 'gemini-2.5-flash', systemInstruction: SYSTEM_INSTRUCTION } as any);
-  const history: any[] = [];
+  const history: HistoryEntry[] = [];
+
+  const appendHistory = (role: 'user' | 'model', text: string) => {
+    history.push({ role, parts: [{ text }] });
+  };
+
+  const runStream = async (kind: BackendKind, message: string) => {
+    const ai = getBackend(kind);
+    const model = getGenerativeModel(ai, { model: MODEL_ID, systemInstruction: SYSTEM_INSTRUCTION } as any);
+    const contents = [...history, { role: 'user', parts: [{ text: message }] }];
+    const stream: any = await (model as any).generateContentStream({ contents });
+    return {
+      [Symbol.asyncIterator]: async function* () {
+        const full = await stream.response;
+        const text = extractTextFromResponse(full);
+        appendHistory('user', message);
+        appendHistory('model', text);
+        yield { text };
+      },
+    } as AsyncIterable<{ text: string }>;
+  };
 
   return {
     async sendMessageStream({ message }) {
-      const contents = [...history, { role: 'user', parts: [{ text: message }] }];
-      // Firebase AI Logic: stream API
-      const stream: any = await (model as any).generateContentStream({ contents });
-      const iterator: AsyncIterable<{ text: string }> = {
-        [Symbol.asyncIterator]: async function* () {
-          const full = await stream.response;
-          const text = extractTextFromResponse(full);
-          history.push({ role: 'user', parts: [{ text: message }] });
-          history.push({ role: 'model', parts: [{ text }] });
-          yield { text };
-        },
-      };
-      return iterator;
+      return runWithFallback(kind => runStream(kind, message), 'stream generation');
     },
   };
 };
@@ -134,94 +269,21 @@ JSONスキーマに厳密に従い、\`carte\`オブジェクトを含むJSONデ
 }
 
 export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Carte> => {
-  const ai = getAI(app, { backend: new GoogleAIBackend() });
-  const model = getGenerativeModel(ai, { model: 'gemini-2.5-flash' } as any);
   const prompt = buildFinalPrompt(chatHistory);
-  // Structured output schema to enforce required fields
-  const asIsStepSchema = {
-    type: 'object',
-    properties: {
-      workId: { type: 'string' },
-      stepNo: { type: 'integer' },
-      asIsStepName: { type: 'string' },
-      toolUsed: { type: 'string', description: '当該ステップで使用するツール' },
-      minutes: { type: 'integer', description: '当該ステップの作業時間（分）' },
-      input: { type: 'string', description: '当該ステップのインプット' },
-      output: { type: 'string', description: '当該ステップのアウトプット' },
-      dataState: { type: 'string', description: 'データの状態（例: 未整備、整備済み 等）' },
-    },
-  } as const;
+  const runStructuredGeneration = async (kind: BackendKind) => {
+    const ai = getBackend(kind);
+    const model = getGenerativeModel(ai, { model: MODEL_ID } as any);
+    return (model as any).generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: CARTE_SCHEMA
+      } as any,
+    } as any);
+  };
 
-  const toBeStepSchema = {
-    type: 'object',
-    properties: {
-      workId: { type: 'string' },
-      stepNo: { type: 'integer' },
-      toBeStepName: { type: 'string' },
-      executorType: { type: 'string', enum: ['manual', 'automated'], description: '実行主体（manual: 手動 / automated: 自動化）' },
-      toolUsed: { type: 'string', description: '当該ステップで使用するツール' },
-      minutes: { type: 'integer', description: '当該ステップの作業時間（分）' },
-      improvementPoint: { type: 'string', description: '改善のポイント（要点）' },
-    },
-  } as const;
+  const resp = await runWithFallback(runStructuredGeneration, 'content generation');
 
-  const carteSchema = {
-    type: 'object',
-    properties: {
-      carte: {
-        type: 'object',
-        properties: {
-          workId: { type: 'string' },
-          title: { type: 'string' },
-          category: { type: 'string' },
-          frequency: { type: 'string' },
-          monthlyCount: { type: 'integer' },
-          totalMinutes: { type: 'integer', description: '該当業務を1回やるのにかかる総時間（分）。asIsSteps の minutes 合計と整合させること。' },
-          numSteps: { type: 'integer' },
-          primaryTool: { type: 'string' },
-          currentBottlenecks: { type: 'array', items: { type: 'string' }, description: '現状の業務における課題や手間がかかる点' },
-          primaryData: { type: 'string' },
-          dataFormat: { type: 'string' },
-          dataState: { type: 'string' },
-          dataStorage: { type: 'string' },
-          apiIntegration: { type: 'string' },
-          asIsSummary: { type: 'string' },
-          asIsSteps: { type: 'array', items: asIsStepSchema },
-          automationScore: { type: 'integer', description: '0から100の間の数値' },
-          automationScoreRationale: { type: 'string', description: '自動化可能度評価の根拠を単文で記述' },
-          humanDependency: { type: 'string', enum: ['high','medium','low'], description: '属人性（high/medium/low のいずれか）' },
-          humanDependencyRationale: { type: 'string', description: '属人性評価の根拠を単文で記述' },
-          notes: { type: 'string' },
-          recommendedSolution: { type: 'string', description: '提案する具体的な解決策やアプローチ' },
-          recommendedToolCategory: { type: 'string', enum: ['aiChat','noCodeTool','customAiChat','gas','systemDevelopment','other'], description: '指定の列挙値のみを使用（aiChat/noCodeTool/customAiChat/gas/systemDevelopment/other）' },
-          toBeSummary: { type: 'string', description: '改善後の理想的な業務フローの要約' },
-          toBeSteps: { type: 'array', items: toBeStepSchema },
-          improvementImpact: { type: 'string', description: '改善によってもたらされるビジネス上のインパクトや利点の要約。重要な数値や結果は必要に応じて強調' },
-          monthlySavedMinutes: { type: 'integer', description: '改善によって削減が見込まれる月間合計時間（分）' },
-          numberOfPeople: { type: 'integer', description: '当該業務を実施する人数（人）' },
-          totalWorkloadMinutesPerMonth: { type: 'integer', description: '組織全体の月間総工数（分）' },
-          estimatedInternalCostJPY: { type: 'integer', description: '内製開発にかかる推定費用（日本円・税別）' },
-          advancedProposal: {
-            type: 'object',
-            properties: {
-              title: { type: 'string', description: '一歩進んだ改善提案のタイトル' },
-              description: { type: 'string', description: '高度な提案の具体的な内容' },
-            },
-          },
-        },
-        required: ['workId','title','recommendedToolCategory','automationScore','estimatedInternalCostJPY']
-      },
-    },
-    required: ['carte']
-  } as const;
-
-  const resp: any = await (model as any).generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: carteSchema
-    } as any,
-  } as any);
   const rawText = typeof resp.text === 'function' ? resp.text() : extractTextFromResponse(resp.response ?? resp);
   let jsonText = (rawText || '').trim();
   if (jsonText.startsWith('```json')) jsonText = jsonText.substring(7, jsonText.length - 3);
