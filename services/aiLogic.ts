@@ -18,7 +18,7 @@ const SYSTEM_INSTRUCTION = `あなたは「AX Copilot」、企業の業務改善
     *   このフェーズでは、**数値に関する質問（時間、回数など）は絶対にしないでください。**
 3.  **フェーズ3: 定量情報のヒアリング**
     *   フェーズ2が終わったら、「ありがとうございます。次に、業務の量についていくつか質問します。」のように、フェーズの切り替えをユーザーに伝えてください。
-    *   このフェーズで初めて、業務の頻度、月間回数、1回あたりの所要時間、そしてその業務に関わる人数など、**数値に関する質問をしてください。**
+    *   このフェーズで初めて、「1.業務の頻度、2.月間回数、3.1回あたりの所要時間、4.その業務を実施する人数」の、**数値に関する質問をしてください。ここは必ず全て聞いて下さい。**
 4.  **フェーズ4: 最終確認**
     *   全てのヒアリングが終わったら、**最後の質問として**「最後に、この業務に分かりやすい名前を付けてください。（例：週次売上レポート作成）」と尋ねてください。これが、ユーザーへの最後の質問です。
 5.  **フェーズ5: カルテ生成**
@@ -129,11 +129,11 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
       workId: { type: 'string' },
       stepNo: { type: 'integer' },
       asIsStepName: { type: 'string' },
-      toolUsed: { type: 'string' },
-      minutes: { type: 'integer' },
-      input: { type: 'string' },
-      output: { type: 'string' },
-      dataState: { type: 'string' },
+      toolUsed: { type: 'string', description: '当該ステップで使用するツール' },
+      minutes: { type: 'integer', description: '当該ステップの作業時間（分）' },
+      input: { type: 'string', description: '当該ステップのインプット' },
+      output: { type: 'string', description: '当該ステップのアウトプット' },
+      dataState: { type: 'string', description: 'データの状態（例: 未整備、整備済み 等）' },
     },
   } as const;
 
@@ -143,10 +143,10 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
       workId: { type: 'string' },
       stepNo: { type: 'integer' },
       toBeStepName: { type: 'string' },
-      executorType: { type: 'string', enum: ['manual', 'automated'] },
-      toolUsed: { type: 'string' },
-      minutes: { type: 'integer' },
-      improvementPoint: { type: 'string' },
+      executorType: { type: 'string', enum: ['manual', 'automated'], description: '実行主体（manual: 手動 / automated: 自動化）' },
+      toolUsed: { type: 'string', description: '当該ステップで使用するツール' },
+      minutes: { type: 'integer', description: '当該ステップの作業時間（分）' },
+      improvementPoint: { type: 'string', description: '改善のポイント（要点）' },
     },
   } as const;
 
@@ -161,10 +161,10 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
           category: { type: 'string' },
           frequency: { type: 'string' },
           monthlyCount: { type: 'integer' },
-          totalMinutes: { type: 'integer' },
+          totalMinutes: { type: 'integer', description: '該当業務を1回やるのにかかる総時間（分）。asIsSteps の minutes 合計と整合させること。' },
           numSteps: { type: 'integer' },
           primaryTool: { type: 'string' },
-          currentBottlenecks: { type: 'array', items: { type: 'string' } },
+          currentBottlenecks: { type: 'array', items: { type: 'string' }, description: '現状の業務における課題や手間がかかる点' },
           primaryData: { type: 'string' },
           dataFormat: { type: 'string' },
           dataState: { type: 'string' },
@@ -172,23 +172,23 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
           apiIntegration: { type: 'string' },
           asIsSummary: { type: 'string' },
           asIsSteps: { type: 'array', items: asIsStepSchema },
-          automationScore: { type: 'integer' },
-          automationScoreRationale: { type: 'string' },
-          humanDependency: { type: 'string', enum: ['high','medium','low'] },
-          humanDependencyRationale: { type: 'string' },
+          automationScore: { type: 'integer', description: '0から100の間の数値' },
+          automationScoreRationale: { type: 'string', description: '自動化可能度評価の根拠を単文で記述' },
+          humanDependency: { type: 'string', enum: ['high','medium','low'], description: '属人性（high/medium/low のいずれか）' },
+          humanDependencyRationale: { type: 'string', description: '属人性評価の根拠を単文で記述' },
           notes: { type: 'string' },
-          recommendedSolution: { type: 'string' },
-          recommendedToolCategory: { type: 'string', enum: ['aiChat','noCodeTool','customAiChat','gas','systemDevelopment','other'] },
-          toBeSummary: { type: 'string' },
+          recommendedSolution: { type: 'string', description: '提案する具体的な解決策やアプローチ' },
+          recommendedToolCategory: { type: 'string', enum: ['aiChat','noCodeTool','customAiChat','gas','systemDevelopment','other'], description: '指定の列挙値のみを使用（aiChat/noCodeTool/customAiChat/gas/systemDevelopment/other）' },
+          toBeSummary: { type: 'string', description: '改善後の理想的な業務フローの要約' },
           toBeSteps: { type: 'array', items: toBeStepSchema },
-          improvementImpact: { type: 'string' },
-          monthlySavedMinutes: { type: 'integer' },
-          savedMinuteDetails: { type: 'string' },
+          improvementImpact: { type: 'string', description: '改善によってもたらされるビジネス上のインパクトや利点の要約。重要な数値や結果は必要に応じて強調' },
+          monthlySavedMinutes: { type: 'integer', description: '改善によって削減が見込まれる月間合計時間（分）' },
+          savedMinuteDetails: { type: 'string', description: '削減時間の計算根拠を示す文字列。例: (改善前60分 - 改善後10分) × 月10回 = 500分' },
           advancedProposal: {
             type: 'object',
             properties: {
-              title: { type: 'string' },
-              description: { type: 'string' },
+              title: { type: 'string', description: '一歩進んだ改善提案のタイトル' },
+              description: { type: 'string', description: '高度な提案の具体的な内容' },
             },
           },
         },
