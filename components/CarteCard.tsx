@@ -9,8 +9,8 @@ interface CarteCardProps {
 }
 
 const CarteCard: React.FC<CarteCardProps> = ({ carte, onClick }) => {
-    const priority = getPriorityStyles(carte.自動化可能度);
-    const monthlySavedTime = carte.月間削減時間_分 || 0;
+    const priority = getPriorityStyles(carte.automationScore);
+    const monthlySavedTime = carte.monthlySavedMinutes || 0;
 
     return (
         <motion.div
@@ -22,8 +22,8 @@ const CarteCard: React.FC<CarteCardProps> = ({ carte, onClick }) => {
             <div className="p-6 flex-grow">
                 <div className="flex justify-between items-start">
                     <div>
-                        <p className="text-sm text-blue-600 font-semibold">{carte.業務カテゴリ}</p>
-                        <h3 className="text-lg font-bold text-gray-900 mt-1">{carte.業務タイトル}</h3>
+                        <p className="text-sm text-blue-600 font-semibold">{carte.category}</p>
+                        <h3 className="text-lg font-bold text-gray-900 mt-1">{carte.title}</h3>
                     </div>
                     <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-bold text-2xl ${priority.bg} ${priority.text} border-2 ${priority.border}`}>
                         {priority.letter}
@@ -33,7 +33,7 @@ const CarteCard: React.FC<CarteCardProps> = ({ carte, onClick }) => {
                 <div className="my-6 grid grid-cols-2 gap-4 text-center">
                     <div>
                         <p className="text-xs text-gray-500">自動化ポテンシャル</p>
-                        <p className={`text-3xl font-bold ${priority.text}`}>{carte.自動化可能度}<span className="text-lg">%</span></p>
+                        <p className={`text-3xl font-bold ${priority.text}`}>{carte.automationScore}<span className="text-lg">%</span></p>
                     </div>
                     <div>
                         <p className="text-xs text-gray-500">月間削減時間</p>
@@ -44,17 +44,17 @@ const CarteCard: React.FC<CarteCardProps> = ({ carte, onClick }) => {
                 <div className="space-y-3 text-sm">
                     <div className="flex justify-between">
                         <span className="text-gray-500">主要ツール</span>
-                        <span className="text-gray-800 font-medium">{carte.主要ツール}</span>
+                        <span className="text-gray-800 font-medium">{carte.primaryTool}</span>
                     </div>
                      <div className="flex justify-between">
                         <span className="text-gray-500">データ状態</span>
-                        <span className="text-gray-800 font-medium">{carte.データ状態}</span>
+                        <span className="text-gray-800 font-medium">{carte.dataState}</span>
                     </div>
                 </div>
             </div>
             <div className="bg-gray-50/70 px-6 py-4 rounded-b-xl border-t border-gray-200 mt-auto">
                  <h4 className="text-xs font-semibold text-gray-500 mb-2 tracking-wider uppercase">推奨ソリューション</h4>
-                 <ToolIndicator category={carte.推奨ツールカテゴリ} />
+                 <ToolIndicator category={carte.recommendedToolCategory} />
             </div>
         </motion.div>
     );

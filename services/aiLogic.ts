@@ -18,7 +18,7 @@ const SYSTEM_INSTRUCTION = `あなたは「AX Copilot」、企業の業務改善
     *   このフェーズでは、**数値に関する質問（時間、回数など）は絶対にしないでください。**
 3.  **フェーズ3: 定量情報のヒアリング**
     *   フェーズ2が終わったら、「ありがとうございます。次に、業務の量についていくつか質問します。」のように、フェーズの切り替えをユーザーに伝えてください。
-    *   このフェーズで初めて、業務の頻度、月間回数、1回あたりの所要時間など、**数値に関する質問をしてください。**
+    *   このフェーズで初めて、業務の頻度、月間回数、1回あたりの所要時間、そしてその業務に関わる人数など、**数値に関する質問をしてください。**
 4.  **フェーズ4: 最終確認**
     *   全てのヒアリングが終わったら、**最後の質問として**「最後に、この業務に分かりやすい名前を付けてください。（例：週次売上レポート作成）」と尋ねてください。これが、ユーザーへの最後の質問です。
 5.  **フェーズ5: カルテ生成**
@@ -127,12 +127,10 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
     type: 'object',
     properties: {
       workId: { type: 'string' },
-      workStepId: { type: 'string' },
       stepNo: { type: 'integer' },
       asIsStepName: { type: 'string' },
-      executionRole: { type: 'string' },
-      tool: { type: 'string' },
-      timeMinutes: { type: 'integer' },
+      toolUsed: { type: 'string' },
+      minutes: { type: 'integer' },
       input: { type: 'string' },
       output: { type: 'string' },
       dataState: { type: 'string' },
@@ -142,13 +140,13 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
   const toBeStepSchema = {
     type: 'object',
     properties: {
-      業務ID: { type: 'string' },
-      工程No: { type: 'integer' },
-      ToBeステップ名: { type: 'string' },
-      実行主体: { type: 'string', enum: ['手動', '自動化'] },
-      使用ツール: { type: 'string' },
-      時間_分: { type: 'integer' },
-      改善のポイント: { type: 'string' },
+      workId: { type: 'string' },
+      stepNo: { type: 'integer' },
+      toBeStepName: { type: 'string' },
+      executorType: { type: 'string', enum: ['manual', 'automated'] },
+      toolUsed: { type: 'string' },
+      minutes: { type: 'integer' },
+      improvementPoint: { type: 'string' },
     },
   } as const;
 
@@ -158,50 +156,43 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
       carte: {
         type: 'object',
         properties: {
-          業務ID: { type: 'string' },
-          業務タイトル: { type: 'string' },
-          業務カテゴリ: { type: 'string' },
-          頻度: { type: 'string' },
-          月間回数: { type: 'integer' },
-          総時間_分: { type: 'integer', description: '該当業務を1回やるのにかかる総時間（分）。基本的に、ユーザの回答をそのまま入れればよい。' },
-          工程数: { type: 'integer' },
-          主要ツール: { type: 'string' },
-          現状のボトルネック: { type: 'array', description: '現状の業務における課題や手間がかかる点', items: { type: 'string' } },
-          主要データ: { type: 'string' },
-          データ形式: { type: 'string' },
-          データ状態: { type: 'string' },
-          データ保存場所: { type: 'string' },
-          API連携: { type: 'string' },
-          AsIsフロー要約: { type: 'string' },
+          workId: { type: 'string' },
+          title: { type: 'string' },
+          category: { type: 'string' },
+          frequency: { type: 'string' },
+          monthlyCount: { type: 'integer' },
+          totalMinutes: { type: 'integer' },
+          numSteps: { type: 'integer' },
+          primaryTool: { type: 'string' },
+          currentBottlenecks: { type: 'array', items: { type: 'string' } },
+          primaryData: { type: 'string' },
+          dataFormat: { type: 'string' },
+          dataState: { type: 'string' },
+          dataStorage: { type: 'string' },
+          apiIntegration: { type: 'string' },
+          asIsSummary: { type: 'string' },
           asIsSteps: { type: 'array', items: asIsStepSchema },
-          自動化可能度: { type: 'integer', description: '0から100の間の数値' },
-          自動化可能度根拠: { type: 'string', description: '自動化可能度評価の根拠を単文で記述' },
-          属人性: { type: 'string', enum: ['高', '中', '低'] },
-          属人性根拠: { type: 'string', description: '属人性評価の根拠を単文で記述' },
-          備考: { type: 'string' },
-          推奨ソリューション: { type: 'string', description: '提案する具体的な解決策やアプローチ' },
-          推奨ツールカテゴリ: { type: 'string', enum: [
-            '生成AIチャット (Gemini, ChatGPT)',
-            'ノーコード連携 (Zapier, Power Automate)',
-            'カスタムAIチャットボット (GPTs, Gemini)',
-            'GAS (Google Apps Script)',
-            'コード開発 (AI Studio, Vertex AI)',
-            'その他'
-          ] },
-          ToBeフロー要約: { type: 'string', description: '改善後の理想的な業務フローの要約' },
+          automationScore: { type: 'integer' },
+          automationScoreRationale: { type: 'string' },
+          humanDependency: { type: 'string', enum: ['high','medium','low'] },
+          humanDependencyRationale: { type: 'string' },
+          notes: { type: 'string' },
+          recommendedSolution: { type: 'string' },
+          recommendedToolCategory: { type: 'string', enum: ['aiChat','noCodeTool','customAiChat','gas','systemDevelopment','other'] },
+          toBeSummary: { type: 'string' },
           toBeSteps: { type: 'array', items: toBeStepSchema },
-          改善インパクト: { type: 'string', description: '改善によってもたらされるビジネス上のインパクトや利点の要約。重要な数値や結果は**太字**で強調すること。' },
-          月間削減時間_分: { type: 'integer', description: '改善によって削減が見込まれる月間合計時間（分）。' },
-          削減時間詳細: { type: 'string', description: '削減時間の計算根拠を示す文字列. 例: (改善前60分 - 改善後10分) × 月10回 = 500分' },
-          高度な提案: {
+          improvementImpact: { type: 'string' },
+          monthlySavedMinutes: { type: 'integer' },
+          savedMinuteDetails: { type: 'string' },
+          advancedProposal: {
             type: 'object',
             properties: {
-              タイトル: { type: 'string', description: '一歩進んだ改善提案のタイトル' },
-              説明: { type: 'string', description: '高度な提案の具体的な内容' },
+              title: { type: 'string' },
+              description: { type: 'string' },
             },
           },
         },
-        required: ['業務ID','業務タイトル','推奨ツールカテゴリ','自動化可能度']
+        required: ['workId','title','recommendedToolCategory','automationScore']
       },
     },
     required: ['carte']

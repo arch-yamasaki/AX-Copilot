@@ -87,31 +87,31 @@ const ProcessFlowView: React.FC<{ carte: Carte; type: 'as-is' | 'to-be' }> = ({ 
         <div>
             <h4 className={`font-semibold ${titleColor} mb-3`}>{isAsIs ? '現状のフロー (As-Is)' : '改善後のフロー (To-Be)'}</h4>
             <p className={`text-sm ${summaryText} mb-4 p-3 rounded-lg border ${summaryBg}`}>
-                {isAsIs ? carte.AsIsフロー要約 : carte.ToBeフロー要約}
+                {isAsIs ? carte.asIsSummary : carte.toBeSummary}
             </p>
             <div className="relative">
                 <div className="absolute left-4 top-4 h-full w-0.5 bg-gray-200"></div>
                 <div className="space-y-4">
                     {steps.map((step, index) => (
-                        <div key={step.工程No} className="relative pl-12">
+                        <div key={(step as any).stepNo} className="relative pl-12">
                             <div className={`absolute left-0 top-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border-2 ${stepNumColor} shadow-sm`}>
-                                {step.工程No}
+                                {(step as any).stepNo}
                             </div>
                             <div className="ml-2 pt-1">
                                 <div className="flex justify-between items-start">
                                     <p className="font-medium text-gray-800 pr-2">
-                                        {isAsIs ? (step as AsIsStep).AsIsステップ名 : (step as ToBeStep).ToBeステップ名}
+                                        {isAsIs ? (step as AsIsStep).asIsStepName : (step as ToBeStep).toBeStepName}
                                     </p>
                                     {!isAsIs && (
                                         <span className={`flex-shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full ${
-                                            (step as ToBeStep).実行主体 === '自動化' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                                            (step as ToBeStep).executorType === 'automated' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
                                         }`}>
-                                            {(step as ToBeStep).実行主体}
+                                            {(step as ToBeStep).executorType === 'automated' ? '自動化' : '手動'}
                                         </span>
                                     )}
                                 </div>
                                 <p className="text-xs text-gray-500 mt-1">
-                                    {isAsIs ? `時間: ${step.時間_分}分 | ツール: ${step.使用ツール}` : `改善のポイント: ${(step as ToBeStep).改善のポイント}`}
+                                    {isAsIs ? `時間: ${(step as AsIsStep).minutes}分 | ツール: ${(step as AsIsStep).toolUsed}` : `改善のポイント: ${(step as ToBeStep).improvementPoint}`}
                                 </p>
                             </div>
                         </div>
@@ -123,9 +123,9 @@ const ProcessFlowView: React.FC<{ carte: Carte; type: 'as-is' | 'to-be' }> = ({ 
 };
 
 const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ carte, onClose }) => {
-    const priority = getPriorityStyles(carte.自動化可能度);
-    const monthlySavedHours = ((carte.月間削減時間_分 || 0) / 60).toFixed(1);
-    const automationData = [{ value: carte.自動化可能度 }];
+    const priority = getPriorityStyles(carte.automationScore);
+    const monthlySavedHours = ((carte.monthlySavedMinutes || 0) / 60).toFixed(1);
+    const automationData = [{ value: carte.automationScore }];
     const [isFlowVisible, setIsFlowVisible] = useState(false);
     
     return (
@@ -136,8 +136,8 @@ const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ ca
                 
                 <header className="p-6 border-b border-gray-200 flex justify-between items-start sticky top-0 bg-gray-50/80 backdrop-blur-sm rounded-t-2xl z-10">
                     <div>
-                        <p className="text-sm font-semibold text-blue-600">{carte.業務カテゴリ}</p>
-                        <h2 className="text-2xl font-bold text-gray-900 mt-1">{carte.業務タイトル}</h2>
+                        <p className="text-sm font-semibold text-blue-600">{carte.category}</p>
+                        <h2 className="text-2xl font-bold text-gray-900 mt-1">{carte.title}</h2>
                     </div>
                     <div className="flex items-center gap-4">
                          <div className={`font-bold text-lg px-4 py-1 rounded-full flex items-center ${priority.bg} ${priority.text}`}>
@@ -154,7 +154,7 @@ const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ ca
                              <h3 className="text-sm font-bold text-gray-500 tracking-wider uppercase mb-3 flex items-center gap-2"><LightBulbIcon className="h-5 w-5" />推奨ソリューション</h3>
                              <div className="p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
                                 <div className="mb-2">
-                                     <ToolIndicator category={carte.推奨ツールカテゴリ} />
+                                     <ToolIndicator category={carte.recommendedToolCategory} />
                                 </div>
                                 <p className="text-gray-600 mt-1">{carte.推奨ソリューション}</p>
                              </div>
@@ -204,10 +204,10 @@ const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ ca
                                 </ResponsiveContainer>
                                 <div className="absolute flex flex-col items-center justify-center">
                                     <span className="text-xs text-gray-500">自動化可能度</span>
-                                    <span className={`text-5xl font-bold ${priority.text}`}>{carte.自動化可能度}<span className="text-2xl">%</span></span>
+                                    <span className={`text-5xl font-bold ${priority.text}`}>{carte.automationScore}<span className="text-2xl">%</span></span>
                                 </div>
                             </div>
-                             <p className="text-sm text-center text-gray-600 bg-gray-100 p-2 rounded-md mt-2">{carte.自動化可能度根拠}</p>
+                             <p className="text-sm text-center text-gray-600 bg-gray-100 p-2 rounded-md mt-2">{carte.automationScoreRationale}</p>
                          </div>
                         <div className="grid grid-cols-2 gap-4">
                              <div className="p-4 bg-white border rounded-xl shadow-sm text-center">
@@ -221,7 +221,7 @@ const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ ca
                                     <p className="text-3xl font-bold text-gray-800">{monthlySavedHours}</p>
                                     <span className="font-medium text-gray-500">時間</span>
                                 </div>
-                                 <p className="text-xs text-gray-500 mt-1 bg-gray-50 px-1 py-0.5 rounded">{carte.削減時間詳細}</p>
+                                 <p className="text-xs text-gray-500 mt-1 bg-gray-50 px-1 py-0.5 rounded">{carte.savedMinuteDetails}</p>
                             </div>
                         </div>
                     </div>
@@ -265,7 +265,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ cartes, onStartNew, onCle
 
     useEffect(() => {
         if (highlightId) {
-            const carteToHighlight = cartes.find(c => c.業務ID === highlightId);
+            const carteToHighlight = cartes.find(c => c.workId === highlightId);
             if (carteToHighlight) {
                 setSelectedCarte(carteToHighlight);
             }
@@ -274,28 +274,27 @@ const DashboardView: React.FC<DashboardViewProps> = ({ cartes, onStartNew, onCle
 
     const sortedCartes = useMemo(() => [...cartes].sort((a, b) => {
         if (sortBy === 'automation') {
-            return b.自動化可能度 - a.自動化可能度;
+            return b.automationScore - a.automationScore;
         }
         if (sortBy === 'time') {
-            return (b.月間削減時間_分 || 0) - (a.月間削減時間_分 || 0);
+            return (b.monthlySavedMinutes || 0) - (a.monthlySavedMinutes || 0);
         }
         return cartes.indexOf(a) - cartes.indexOf(b);
     }), [cartes, sortBy]);
     
     const { kpiData, priorityData, solutionData } = useMemo(() => {
-        const totalWorkload = cartes.reduce((acc, c) => acc + ((c.総時間_分 || 0) * (c.月間回数 || 0)), 0);
-        const highPriorityCartes = cartes.filter(c => c.自動化可能度 >= 60); // A and B ranks
-        const savingsPotential = highPriorityCartes.reduce((acc, c) => acc + (c.月間削減時間_分 || 0), 0);
+        const totalWorkload = cartes.reduce((acc, c) => acc + ((c.totalMinutes || 0) * (c.monthlyCount || 0)), 0);
+        const highPriorityCartes = cartes.filter(c => c.automationScore >= 60); // A and B ranks
+        const savingsPotential = highPriorityCartes.reduce((acc, c) => acc + (c.monthlySavedMinutes || 0), 0);
         
         const priorityCounts = cartes.reduce((acc, c) => {
-            console.log(`c.業務タイトル : ${c.業務タイトル}, c.総時間_分: ${c.総時間_分}, c.月間回数: ${c.月間回数}, c.月間削減時間_分: ${c.月間削減時間_分}`);
-            const { letter } = getPriorityStyles(c.自動化可能度);
+            const { letter } = getPriorityStyles(c.automationScore);
             acc[letter] = (acc[letter] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
 
         const solutionCounts = cartes.reduce((acc, c) => {
-            const { name } = getToolStyle(c.推奨ツールカテゴリ);
+            const { name } = getToolStyle(c.recommendedToolCategory);
             acc[name] = (acc[name] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
@@ -431,7 +430,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ cartes, onStartNew, onCle
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {sortedCartes.map(carte => (
                         <CarteCard 
-                            key={carte.業務ID} 
+                            key={carte.workId} 
                             carte={carte}
                             onClick={() => setSelectedCarte(carte)}
                         />

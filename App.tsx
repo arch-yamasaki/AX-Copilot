@@ -62,7 +62,7 @@ const App: React.FC = () => {
     try {
       await addCarteRepo(user.uid, newCarte);
       setCartes(prev => [...prev, newCarte]);
-      setCurrentCarteId(newCarte.業務ID);
+      setCurrentCarteId(newCarte.workId);
       setView('dashboard');
     } catch (e) {
       console.error('Failed to add carte', e);
