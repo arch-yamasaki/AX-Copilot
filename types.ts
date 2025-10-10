@@ -44,7 +44,6 @@ export interface Carte {
   estimatedInternalCostJPY: number; // self-build development cost estimate (JPY)
   totalWorkloadMinutesPerMonth?: number; // derived: totalMinutes * monthlyCount * numberOfPeople
   numberOfPeople?: number;
-  savedMinuteDetails: string;
   advancedProposal: {
     title: string;
     description: string;

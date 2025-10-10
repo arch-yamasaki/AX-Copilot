@@ -63,6 +63,12 @@ const formatCurrencyJPY = (value?: number | null) => {
     return value.toLocaleString('ja-JP');
 };
 
+const buildSavedMinuteDetails = (carte: Carte) => {
+    const toBeTotal = carte.toBeSteps.reduce((sum, step) => sum + step.minutes, 0);
+    const people = carte.numberOfPeople ?? 1;
+    return `(改善前${carte.totalMinutes}分 - 改善後${toBeTotal}分) × 月${carte.monthlyCount}回 × ${people}人 = ${carte.monthlySavedMinutes}分`;
+};
+
 export const ToolIndicator: React.FC<{ category: ToolCategory; }> = ({ category }) => {
     const style = getToolStyle(category);
     const colors = colorMap[style.color];
@@ -252,7 +258,7 @@ const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ ca
                                     <p className="text-3xl font-bold text-gray-800">{monthlySavedHours}</p>
                                     <span className="font-medium text-gray-500">時間</span>
                                 </div>
-                                 <p className="text-xs text-gray-500 mt-1 bg-gray-50 px-1 py-0.5 rounded">{carte.savedMinuteDetails}</p>
+                                 <p className="text-xs text-gray-500 mt-1 bg-gray-50 px-1 py-0.5 rounded">{buildSavedMinuteDetails(carte)}</p>
                             </div>
                         </div>
                     </div>

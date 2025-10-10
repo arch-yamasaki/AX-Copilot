@@ -121,7 +121,6 @@ ${conversation}
   *   \`自動化可能度\`を0〜100の数値で客観的に評価し、その**評価根拠**を\`自動化可能度根拠\`として具体的に記述してください。（例：「主要工程がルールベースであり、API連携可能なため」）
   *   \`属人性\`を「高」「中」「低」の3段階で評価し、その根拠を\`属人性根拠\`として単文で記述してください。
   *   改善による月間の削減時間/回を分単位で計算し\`月間削減時間_分\`に格納してください。この際、対話から取得した**人数**も必ず考慮し、**個人ではなく組織全体の削減時間**を算出してください。
-  *   削減時間の計算過程を\`削減時間詳細\`として「(改善前XX分 - 改善後YY分) × 月ZZ回 = WW分」の形式で記述してください。
   *   **高度な提案**: 今回の改善のさらに先を見据えた、一歩進んだ提案（例：データ分析基盤との連携、プロアクティブな顧客提案への応用など）を\`高度な提案\`として記述してください。
 
 5.  **内製開発コスト推定**:
@@ -201,7 +200,6 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
           monthlySavedMinutes: { type: 'integer', description: '改善によって削減が見込まれる月間合計時間（分）' },
           numberOfPeople: { type: 'integer', description: '当該業務を実施する人数（人）' },
           totalWorkloadMinutesPerMonth: { type: 'integer', description: '組織全体の月間総工数（分）' },
-          savedMinuteDetails: { type: 'string', description: '削減時間の計算根拠を示す文字列。例: (改善前60分 - 改善後10分) × 月10回 = 500分' },
           estimatedInternalCostJPY: { type: 'integer', description: '内製開発にかかる推定費用（日本円・税別）' },
           advancedProposal: {
             type: 'object',
