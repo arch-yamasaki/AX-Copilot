@@ -163,7 +163,7 @@ const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ ca
                         <div>
                             <h3 className="text-sm font-bold text-gray-500 tracking-wider uppercase mb-3 flex items-center gap-2"><ExclamationTriangleIcon className="h-5 w-5" />現状のボトルネック</h3>
                             <div className="space-y-3">
-                                {carte.現状のボトルネック.map((item, index) => 
+                                {carte.currentBottlenecks.map((item, index) => 
                                     <div key={index} className="p-3 bg-red-50 border-l-4 border-red-400 text-red-800 text-sm rounded-r-lg">
                                         {item}
                                     </div>
@@ -174,16 +174,16 @@ const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ ca
                         <div>
                             <h3 className="text-sm font-bold text-gray-500 tracking-wider uppercase mb-3">改善インパクト</h3>
                             <div className="p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
-                                <p className="text-gray-700 text-base leading-relaxed" dangerouslySetInnerHTML={parseImpactText(carte.改善インパクト)}></p>
+                                <p className="text-gray-700 text-base leading-relaxed" dangerouslySetInnerHTML={parseImpactText(carte.improvementImpact)}></p>
                             </div>
                         </div>
                         
-                        {carte.高度な提案 && carte.高度な提案.タイトル && (
+                        {carte.advancedProposal && carte.advancedProposal.title && (
                              <div>
                                 <h3 className="text-sm font-bold text-gray-500 tracking-wider uppercase mb-3 flex items-center gap-2"><SparklesIcon className="h-5 w-5" />高度な提案</h3>
                                 <div className="p-5 bg-blue-50/50 border-l-4 border-blue-400 text-blue-900 rounded-r-lg">
-                                     <h4 className="font-bold text-blue-800">{carte.高度な提案.タイトル}</h4>
-                                     <p className="text-sm mt-1">{carte.高度な提案.説明}</p>
+                                    <h4 className="font-bold text-blue-800">{carte.advancedProposal.title}</h4>
+                                    <p className="text-sm mt-1">{carte.advancedProposal.description}</p>
                                 </div>
                             </div>
                         )}
