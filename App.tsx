@@ -7,7 +7,7 @@ import { LogoIcon } from './components/icons/LogoIcon';
 import HomeView from './components/HomeView';
 import Flash from './components/Flash';
 import { observeAuth, signInWithGoogle, signOutApp } from './services/authService';
-import { listCartes, addCarte as addCarteRepo, deleteAllCartes as deleteAllCartesRepo } from './services/carteRepository';
+import { listCartes, addCarte as addCarteRepo, deleteCarte as deleteCarteRepo } from './services/carteRepository';
 
 type View = 'chat' | 'dashboard';
 
@@ -73,18 +73,18 @@ const App: React.FC = () => {
     setView('chat');
   }, []);
 
-  const handleClearData = useCallback(async () => {
+  const handleDeleteCarte = useCallback(async (workId: string) => {
     if (!user) return;
-    if (window.confirm('本当にすべての業務カルテを削除しますか？この操作は元に戻せません。')) {
+    if (window.confirm('このカルテを削除します。よろしいですか？')) {
       try {
-        await deleteAllCartesRepo(user.uid);
-        setCartes([]);
-        setView('chat');
+        await deleteCarteRepo(user.uid, workId);
+        setCartes(prev => prev.filter(c => c.workId !== workId));
+        if (currentCarteId === workId) setCurrentCarteId(null);
       } catch (e) {
-        console.error('Failed to clear data', e);
+        console.error('Failed to delete carte', e);
       }
     }
-  }, [user]);
+  }, [user, currentCarteId]);
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -144,7 +144,7 @@ const App: React.FC = () => {
         ) : (
           <>
             {view === 'chat' && <ChatView key={Date.now()} onCarteGenerated={handleCarteGenerated} />}
-            {view === 'dashboard' && <DashboardView cartes={cartes} onStartNew={handleStartNew} onClearData={handleClearData} highlightId={currentCarteId} />}
+            {view === 'dashboard' && <DashboardView cartes={cartes} onStartNew={handleStartNew} onDeleteCarte={handleDeleteCarte} highlightId={currentCarteId} />}
           </>
         )}
       </main>

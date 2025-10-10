@@ -6,9 +6,10 @@ import { ToolIndicator, getPriorityStyles } from './DashboardView';
 interface CarteCardProps {
     carte: Carte;
     onClick: () => void;
+    onDelete?: () => void;
 }
 
-const CarteCard: React.FC<CarteCardProps> = ({ carte, onClick }) => {
+const CarteCard: React.FC<CarteCardProps> = ({ carte, onClick, onDelete }) => {
     const priority = getPriorityStyles(carte.automationScore);
     const monthlySavedTime = carte.monthlySavedMinutes || 0;
     // monthlySavedMinutes は組織全体ベースで再計算済み
@@ -70,8 +71,21 @@ const CarteCard: React.FC<CarteCardProps> = ({ carte, onClick }) => {
                 </div>
             </div>
             <div className="bg-gray-50/70 px-6 py-4 rounded-b-xl border-t border-gray-200 mt-auto">
-                 <h4 className="text-xs font-semibold text-gray-500 mb-2 tracking-wider uppercase">推奨ソリューション</h4>
-                 <ToolIndicator category={carte.recommendedToolCategory} />
+                 <div className="flex items-center justify-between">
+                    <div>
+                        <h4 className="text-xs font-semibold text-gray-500 mb-2 tracking-wider uppercase">推奨ソリューション</h4>
+                        <ToolIndicator category={carte.recommendedToolCategory} />
+                    </div>
+                    {onDelete && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                            className="text-red-600 hover:text-red-700 text-sm font-semibold"
+                            title="このカルテを削除"
+                        >
+                            削除
+                        </button>
+                    )}
+                 </div>
             </div>
         </motion.div>
     );

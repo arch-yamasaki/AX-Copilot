@@ -29,7 +29,7 @@ const ChevronDownIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 interface DashboardViewProps {
   cartes: Carte[];
   onStartNew: () => void;
-  onClearData: () => void;
+  onDeleteCarte: (workId: string) => void;
   highlightId: string | null;
 }
 
@@ -247,7 +247,8 @@ const ProcessFlowView: React.FC<{ carte: Carte; type: 'as-is' | 'to-be' }> = ({ 
 const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ carte, onClose }) => {
     const priority = getPriorityStyles(carte.automationScore);
     const monthlySavedHours = ((carte.monthlySavedMinutes || 0) / 60).toFixed(1);
-    const automationData = [{ value: carte.automationScore }];
+    const automationScore = Math.max(0, Math.min(100, Number(carte.automationScore || 0)));
+    const automationData = [{ value: automationScore }];
     const [isFlowVisible, setIsFlowVisible] = useState(false);
     
     return (
@@ -345,7 +346,7 @@ const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ ca
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie data={[{ value: 100 }]} dataKey="value" cx="50%" cy="50%" innerRadius={60} outerRadius={70} fill="#e5e7eb" startAngle={90} endAngle={-270} />
-                                        <Pie data={automationData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={70} fill={priority.fill} startAngle={90} endAngle={90 - (carte.自動化可能度 / 100) * 360} cornerRadius={5}>
+                                        <Pie data={automationData} dataKey="value" cx="50%" cy="50%" innerRadius={60} outerRadius={70} fill={priority.fill} startAngle={90} endAngle={90 - (automationScore / 100) * 360} cornerRadius={5}>
                                              <Cell fill={priority.fill} />
                                         </Pie>
                                     </PieChart>
@@ -407,7 +408,7 @@ const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ ca
 };
 
 
-const DashboardView: React.FC<DashboardViewProps> = ({ cartes, onStartNew, onClearData, highlightId }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ cartes, onStartNew, onDeleteCarte, highlightId }) => {
     const [sortBy, setSortBy] = useState<'automation' | 'time' | 'default'>('default');
     const [selectedCarte, setSelectedCarte] = useState<Carte | null>(null);
 
@@ -512,14 +513,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ cartes, onStartNew, onCle
                         >
                             CSV出力
                         </button>
-                         <button
-                            onClick={onClearData}
-                            className="bg-red-50 text-red-600 font-semibold py-2 px-4 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-2"
-                            title="すべてのカルテを削除します"
-                        >
-                            <TrashIcon className="h-4 w-4" />
-                            <span>全データ削除</span>
-                        </button>
                         <button
                             onClick={onStartNew}
                             className="bg-blue-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-sm flex items-center gap-2"
@@ -607,6 +600,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ cartes, onStartNew, onCle
                             key={carte.workId} 
                             carte={carte}
                             onClick={() => setSelectedCarte(carte)}
+                            onDelete={() => onDeleteCarte(carte.workId)}
                         />
                     ))}
                 </div>

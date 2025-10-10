@@ -20,4 +20,12 @@ export const deleteAllCartes = async (uid: string): Promise<void> => {
   await Promise.all(deletions);
 };
 
+export const deleteCarte = async (uid: string, workId: string): Promise<void> => {
+  const ref = collection(db, 'users', uid, 'cartes');
+  const q = query(ref, where('workId', '==', workId));
+  const snap = await getDocs(q);
+  const deletions = snap.docs.map(d => deleteDoc(doc(db, 'users', uid, 'cartes', d.id)));
+  await Promise.all(deletions);
+};
+
 
