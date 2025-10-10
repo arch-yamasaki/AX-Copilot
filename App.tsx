@@ -8,7 +8,6 @@ import HomeView from './components/HomeView';
 import Flash from './components/Flash';
 import { observeAuth, signInWithGoogle, signOutApp } from './services/authService';
 import { listCartes, addCarte as addCarteRepo, deleteAllCartes as deleteAllCartesRepo } from './services/carteRepository';
-import { isEmailAllowed as checkEmailAllowed } from './services/securityService';
 
 type View = 'chat' | 'dashboard';
 
@@ -41,17 +40,9 @@ const App: React.FC = () => {
       try {
         setUser(u);
         if (u) {
-          const allowed = await checkEmailAllowed(u.email);
-          if (!allowed) {
-            await signOutApp();
-            setCartes([]);
-            setView('chat');
-            showFlash('許可されていないドメインまたはアドレスのためアクセスできません。管理者までご連絡ください', 'error');
-          } else {
-            const fetched = await listCartes(u.uid);
-            setCartes(fetched);
-            setView(fetched.length > 0 ? 'dashboard' : 'chat');
-          }
+          const fetched = await listCartes(u.uid);
+          setCartes(fetched);
+          setView(fetched.length > 0 ? 'dashboard' : 'chat');
         } else {
           setCartes([]);
           setView('chat');
