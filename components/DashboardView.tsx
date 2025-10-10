@@ -40,13 +40,18 @@ export const getPriorityStyles = (priority: number) => {
     return { letter: 'D', bg: 'bg-red-100', text: 'text-red-600', border: 'border-red-300', fill: '#ef4444' };
 };
 
-const getToolStyle = (category: ToolCategory) => {
-    if (category.startsWith('GAS')) return { color: 'yellow', name: 'GAS' };
-    if (category.startsWith('ノーコード')) return { color: 'purple', name: 'ノーコード連携' };
-    if (category.startsWith('カスタムAI')) return { color: 'blue', name: 'カスタムAIボット' };
-    if (category.startsWith('コード開発')) return { color: 'red', name: 'コード開発' };
-    if (category.startsWith('生成AI')) return { color: 'green', name: '生成AIチャット' };
-    return { color: 'gray', name: 'その他' };
+const TOOL_CATEGORY_STYLES: Record<ToolCategory, { color: keyof typeof colorMap; name: string }> = {
+    '生成AIチャット': { color: 'green', name: '生成AIチャット' },
+    'ノーコード開発': { color: 'purple', name: 'ノーコード開発' },
+    'カスタムAIチャット': { color: 'blue', name: 'カスタムAIチャット' },
+    GAS: { color: 'yellow', name: 'GAS' },
+    'システム開発': { color: 'red', name: 'システム開発' },
+    'その他': { color: 'gray', name: 'その他' },
+};
+
+const getToolStyle = (category?: ToolCategory) => {
+    if (!category) return TOOL_CATEGORY_STYLES['その他'];
+    return TOOL_CATEGORY_STYLES[category] ?? TOOL_CATEGORY_STYLES['その他'];
 };
 
 const colorMap: { [key: string]: { bg: string; text: string; dot: string; } } = {
@@ -61,12 +66,6 @@ const colorMap: { [key: string]: { bg: string; text: string; dot: string; } } = 
 const formatCurrencyJPY = (value?: number | null) => {
     if (typeof value !== 'number' || Number.isNaN(value)) return '-';
     return value.toLocaleString('ja-JP');
-};
-
-const HUMAN_DEPENDENCY_LABEL: Record<Carte['humanDependency'], string> = {
-    high: '高',
-    medium: '中',
-    low: '低',
 };
 
 const buildSavedMinuteDetails = (carte: Carte) => {
@@ -164,7 +163,7 @@ const buildCsvRows = (cartes: Carte[]) => {
             formatAsIsSteps(carte),
             toBeSummary,
             formatToBeSteps(carte),
-            carte.recommendedToolCategory,
+            getToolStyle(carte.recommendedToolCategory).name,
             recommendedSolution,
             improvementImpact.replace(/\r?\n/g, ' '),
             `${carte.automationScore ?? ''}`,
@@ -186,7 +185,7 @@ const buildCsvRows = (cartes: Carte[]) => {
     return [header.join(','), ...rows];
 };
 
-export const ToolIndicator: React.FC<{ category: ToolCategory; }> = ({ category }) => {
+export const ToolIndicator: React.FC<{ category?: ToolCategory }> = ({ category }) => {
     const style = getToolStyle(category);
     const colors = colorMap[style.color];
 
@@ -367,7 +366,7 @@ const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ ca
                         <div className="grid grid-cols-2 gap-4">
                              <div className="p-4 bg-white border rounded-xl shadow-sm text-center">
                                 <label className="text-xs text-gray-500">属人性</label>
-                                <p className="text-3xl font-bold text-gray-800 mt-2">{carte.humanDependency ? HUMAN_DEPENDENCY_LABEL[carte.humanDependency] : '-'}</p>
+                                <p className="text-3xl font-bold text-gray-800 mt-2">{carte.humanDependency || '-'}</p>
                                 <p className="text-xs text-gray-500 mt-1">{carte.humanDependencyRationale}</p>
                             </div>
                              <div className="p-4 bg-white border rounded-xl shadow-sm text-center">

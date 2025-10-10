@@ -109,11 +109,11 @@ const CARTE_SCHEMA = {
         asIsSteps: { type: 'array', items: AS_IS_STEP_SCHEMA },
         automationScore: { type: 'integer', description: '0から100の間の数値' },
         automationScoreRationale: { type: 'string', description: '自動化可能度評価の根拠を単文で記述' },
-        humanDependency: { type: 'string', enum: ['high', 'medium', 'low'], description: '属人性（high/medium/low のいずれか）' },
+        humanDependency: { type: 'string', enum: ['高', '中', '低'], description: '属人性（高/中/低 のいずれか）' },
         humanDependencyRationale: { type: 'string', description: '属人性評価の根拠を単文で記述' },
         notes: { type: 'string' },
         recommendedSolution: { type: 'string', description: '提案する具体的な解決策やアプローチ' },
-        recommendedToolCategory: { type: 'string', enum: ['aiChat', 'noCodeTool', 'customAiChat', 'gas', 'systemDevelopment', 'other'], description: '指定の列挙値のみを使用（aiChat/noCodeTool/customAiChat/gas/systemDevelopment/other）' },
+        recommendedToolCategory: { type: 'string', enum: ['生成AIチャット', 'ノーコード開発', 'カスタムAIチャット', 'GAS', 'システム開発', 'その他'], description: '業務改善するための推奨ツールカテゴリ' },
         toBeSummary: { type: 'string', description: '改善後の理想的な業務フローの要約' },
         toBeSteps: { type: 'array', items: TO_BE_STEP_SCHEMA },
         improvementImpact: { type: 'string', description: '改善によってもたらされるビジネス上のインパクトや利点の要約。重要な数値や結果は必要に応じて強調' },
@@ -164,9 +164,9 @@ const SYSTEM_INSTRUCTION = `あなたは「AX Copilot」、企業の業務改善
 - 推奨ソリューションを実現するために必要な主要ロール（例: Prompt Engineer, Frontend, Backend, PM）と想定稼働時間を推定し、総開発時間を算出してください。
 - 時給レートは統一して **5,000 JPY/h** を使用します。複数ロールがある場合も平均レートのまま合計時間 × 5,000 JPY/h で金額を計算してください。
 - 工数を見積もる際は、ヒアリングで得た 'monthlyCount'、'totalMinutes'、'numberOfPeople'、'asIsSteps' の複雑度、'recommendedToolCategory' を根拠に、以下の目安を参考に粒度を決めてください。
-  * 'recommendedToolCategory' が 'gas' または 'noCodeTool' かつ 'totalWorkloadMinutesPerMonth < 800' の場合: 20〜60時間から判断。
-  * 'recommendedToolCategory' が 'aiChat' または 'customAiChat' の場合: データ整備・UI構築を考慮して 60〜160時間。
-  * 'recommendedToolCategory' が 'systemDevelopment' または 'other'、もしくは 'totalWorkloadMinutesPerMonth >= 2000' の場合: 160時間以上で段階的に増加させます。
+  * 'recommendedToolCategory' が '生成AIチャット' または 'カスタムAIチャット' かつ 'totalWorkloadMinutesPerMonth < 800' の場合: 3〜30時間から判断。
+  * 'recommendedToolCategory' が 'ノーコード開発' または 'GAS' の場合: 開発などがあるので、を考慮して 15〜60時間。
+  * 'recommendedToolCategory' が 'システム開発' または 'その他'、もしくは 'totalWorkloadMinutesPerMonth >= 2000' の場合: 60時間以上で段階的に増加させます。
 - 最終JSONには、算出した金額を整数の日本円で格納した 'estimatedInternalCostJPY' フィールドを **必ず含めてください**。テキストによる補足は行わず、JSON値で提示します。
 
 応答フォーマット:
@@ -242,12 +242,12 @@ ${conversation}
 
 3.  **To-Be提案 (改善提案) - 最重要**:
   *   **推奨ツールカテゴリの選定**: 業務内容を深く理解し、以下の基準に基づいて最も適切な\`推奨ツールカテゴリ\`を一つだけ選択してください。安易な選択はせず、プロのコンサルタントとして最適なツールを選び抜いてください。
-      - **'ノーコード連携 (Zapier, Power Automate)'**: **メール受信をトリガーとした処理、定型的なデータ転記、複数アプリ間の連携**など、明確なルールベースのワークフロー自動化に最適。ユーザーが「Power Automate」などの単語を出した場合、これを第一候補とすること。
-      - **'生成AIチャット (Gemini, ChatGPT)'**: **文章の要約、アイデア出し、メール文面作成、翻訳**など、人間の思考や創造性を補助するタスクに最適。
-      - **'カスタムAIチャットボット (GPTs, Gemini)'**: FAQ対応、社内情報検索など、**対話形式でユーザーからの問い合わせに答える**システム構築に最適。
-      - **'GAS (Google Apps Script)'**: **Google Workspace (スプレッドシート、ドキュメント等) 内でのデータ処理や自動化**に特化した場合に最適。
-      - **'コード開発 (AI Studio, Vertex AI)'**: 独自のAIモデルや、複雑なロジック、高度なシステム連携が必要な場合に選択。
-      - **'その他'**: 上記に当てはまらない場合。
+      - **『ノーコード開発（Zapier, Power Automate 等）』**: **メール受信をトリガーとした処理、定型的なデータ転記、複数アプリ間の連携**など、明確なルールベースのワークフロー自動化に最適。ユーザーが「Power Automate」などの単語を出した場合、これを第一候補とすること。
+      - **『生成AIチャット（Gemini, ChatGPT 等）』**: **文章の要約、アイデア出し、メール文面作成、翻訳**など、人間の思考や創造性を補助するタスクに最適。
+      - **『カスタムAIチャット（GPTs, Gemini 等）』**: FAQ対応、社内情報検索など、**対話形式でユーザーからの問い合わせに答える**システム構築に最適。
+      - **『GAS（Google Apps Script）』**: **Google Workspace (スプレッドシート、ドキュメント等) 内でのデータ処理や自動化**に特化した場合に最適。
+      - **『システム開発（AI Studio, Vertex AI 等）』**: 独自のAIモデルや、複雑なロジック、高度なシステム連携が必要な場合に選択。
+      - **『その他』**: 上記に当てはまらない場合。
   *   **推奨ソリューション**: 選定したツールカテゴリを活用し、最も効果的で実現可能な解決策を\`推奨ソリューション\`として具体的に提案してください。
   *   **To-Beフロー**: 提案ソリューションに基づき、改善後の業務フローを\`toBeSteps\`として具体的に記述してください。各工程が**「手動」か「自動化」かを判断し、\`実行主体\`に設定**してください。自動化されるステップは明確に記述してください。
   *   **改善インパクト**: この改善がビジネスにもたらす定性的・定量的な効果を\`改善インパクト\`として要約してください。**重要な数値や結果は必ずMarkdownの太字表記(\`**text**\`)で強調してください。**

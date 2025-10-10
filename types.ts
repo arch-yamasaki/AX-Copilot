@@ -6,12 +6,12 @@ export interface ChatMessage {
 }
 
 export type ToolCategory =
-  'aiChat' |
-  'noCodeTool' |
-  'customAiChat' |
-  'gas' |
-  'systemDevelopment' |
-  'other';
+  '生成AIチャット' |
+  'ノーコード開発' |
+  'カスタムAIチャット' |
+  'GAS' |
+  'システム開発' |
+  'その他';
 
 export interface Carte {
   workId: string;
@@ -32,7 +32,7 @@ export interface Carte {
   asIsSteps: AsIsStep[]; // Embedded As-Is steps
   automationScore: number;
   automationScoreRationale: string; // rationale for automation score
-  humanDependency: 'high' | 'medium' | 'low';
+  humanDependency: '高' | '中' | '低';
   humanDependencyRationale: string;
   notes: string;
   recommendedSolution: string;
