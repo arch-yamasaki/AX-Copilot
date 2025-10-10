@@ -41,6 +41,8 @@ export interface Carte {
   toBeSteps: ToBeStep[]; // Embedded To-Be steps
   improvementImpact: string;
   monthlySavedMinutes: number; // per-carte monthly saved minutes
+  totalWorkloadMinutesPerMonth?: number; // derived: totalMinutes * monthlyCount * numberOfPeople
+  numberOfPeople?: number;
   savedMinuteDetails: string;
   advancedProposal: {
     title: string;

@@ -11,6 +11,7 @@ interface CarteCardProps {
 const CarteCard: React.FC<CarteCardProps> = ({ carte, onClick }) => {
     const priority = getPriorityStyles(carte.automationScore);
     const monthlySavedTime = carte.monthlySavedMinutes || 0;
+    // monthlySavedMinutes は組織全体ベースで再計算済み
 
     return (
         <motion.div

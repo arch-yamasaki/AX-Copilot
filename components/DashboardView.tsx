@@ -283,7 +283,11 @@ const DashboardView: React.FC<DashboardViewProps> = ({ cartes, onStartNew, onCle
     }), [cartes, sortBy]);
     
     const { kpiData, priorityData, solutionData } = useMemo(() => {
-        const totalWorkload = cartes.reduce((acc, c) => acc + ((c.totalMinutes || 0) * (c.monthlyCount || 0)), 0);
+        const totalWorkload = cartes.reduce((acc, c) => {
+            const people = c.numberOfPeople ?? 1;
+            const derived = c.totalWorkloadMinutesPerMonth ?? ((c.totalMinutes || 0) * (c.monthlyCount || 0) * people);
+            return acc + derived;
+        }, 0);
         const highPriorityCartes = cartes.filter(c => c.automationScore >= 60); // A and B ranks
         const savingsPotential = highPriorityCartes.reduce((acc, c) => acc + (c.monthlySavedMinutes || 0), 0);
         
