@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Carte, AsIsStep, ToBeStep, ToolCategory } from '../types';
 import CarteCard from './CarteCard';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -67,6 +67,117 @@ const buildSavedMinuteDetails = (carte: Carte) => {
     const toBeTotal = carte.toBeSteps.reduce((sum, step) => sum + step.minutes, 0);
     const people = carte.numberOfPeople ?? 1;
     return `(改善前${carte.totalMinutes}分 - 改善後${toBeTotal}分) × 月${carte.monthlyCount}回 × ${people}人 = ${carte.monthlySavedMinutes}分`;
+};
+
+const escapeCsv = (value: string) => `"${value.replaceAll('"', '""')}"`;
+
+const formatAsIsSteps = (carte: Carte) => {
+    if (!carte.asIsSteps.length) return '';
+    return carte.asIsSteps
+        .map(step => `${step.stepNo}: ${step.asIsStepName} (${step.minutes}分)`)
+        .join(' / ');
+};
+
+const formatToBeSteps = (carte: Carte) => {
+    if (!carte.toBeSteps.length) return '';
+    return carte.toBeSteps
+        .map(step => {
+            const mode = step.executorType === 'automated' ? '自動化' : '手動';
+            return `${step.stepNo}: ${step.toBeStepName} [${mode}] (${step.minutes}分)`;
+        })
+        .join(' / ');
+};
+
+const buildCsvRows = (cartes: Carte[]) => {
+    const header = [
+        'workId',
+        'title',
+        'category',
+        'frequency',
+        'monthlyCount',
+        'totalMinutes',
+        'numSteps',
+        'primaryTool',
+        'currentBottlenecks',
+        'primaryData',
+        'dataFormat',
+        'dataState',
+        'dataStorage',
+        'apiIntegration',
+        'asIsSummary',
+        'asIsSteps',
+        'toBeSummary',
+        'toBeSteps',
+        'recommendedToolCategory',
+        'recommendedSolution',
+        'improvementImpact',
+        'automationScore',
+        'automationScoreRationale',
+        'humanDependency',
+        'humanDependencyRationale',
+        'notes',
+        'monthlySavedMinutes',
+        'numberOfPeople',
+        'totalWorkloadMinutesPerMonth',
+        'estimatedInternalCostJPY',
+        'advancedProposalTitle',
+        'advancedProposalDescription',
+    ];
+
+    const rows = cartes.map(carte => {
+        const fallback = carte as any;
+        const recommendedSolution = carte.recommendedSolution ?? fallback['推奨ソリューション'] ?? '';
+        const improvementImpact = carte.improvementImpact ?? fallback['改善インパクト'] ?? '';
+        const asIsSummary = carte.asIsSummary ?? fallback['AsIsフロー要約'] ?? '';
+        const toBeSummary = carte.toBeSummary ?? fallback['ToBeフロー要約'] ?? '';
+        const automationScoreRationale = carte.automationScoreRationale ?? fallback['自動化可能度根拠'] ?? '';
+        const humanDependency = (carte.humanDependency ?? fallback['属人性']) ?? '';
+        const humanDependencyRationale = carte.humanDependencyRationale ?? fallback['属人性根拠'] ?? '';
+        const notes = carte.notes ?? fallback['備考'] ?? '';
+        const advancedProposal = carte.advancedProposal ?? fallback['高度な提案'];
+        const advancedTitle = advancedProposal?.title ?? advancedProposal?.タイトル ?? '';
+        const advancedDescription = advancedProposal?.description ?? advancedProposal?.説明 ?? '';
+        const totalWorkload = carte.totalWorkloadMinutesPerMonth ?? (carte.totalMinutes * carte.monthlyCount * (carte.numberOfPeople ?? 1));
+
+        const values = [
+            carte.workId,
+            carte.title,
+            carte.category,
+            carte.frequency,
+            carte.monthlyCount.toString(),
+            carte.totalMinutes.toString(),
+            carte.numSteps.toString(),
+            carte.primaryTool,
+            (carte.currentBottlenecks ?? []).join(' / '),
+            carte.primaryData,
+            carte.dataFormat,
+            carte.dataState,
+            carte.dataStorage,
+            carte.apiIntegration,
+            asIsSummary,
+            formatAsIsSteps(carte),
+            toBeSummary,
+            formatToBeSteps(carte),
+            carte.recommendedToolCategory,
+            recommendedSolution,
+            improvementImpact.replace(/\r?\n/g, ' '),
+            carte.automationScore.toString(),
+            automationScoreRationale,
+            humanDependency,
+            humanDependencyRationale,
+            notes,
+            carte.monthlySavedMinutes.toString(),
+            (carte.numberOfPeople ?? '').toString(),
+            totalWorkload.toString(),
+            carte.estimatedInternalCostJPY.toString(),
+            advancedTitle,
+            advancedDescription,
+        ];
+
+        return values.map(value => escapeCsv(value ?? '')).join(',');
+    });
+
+    return [header.join(','), ...rows];
 };
 
 export const ToolIndicator: React.FC<{ category: ToolCategory; }> = ({ category }) => {
@@ -318,6 +429,25 @@ const DashboardView: React.FC<DashboardViewProps> = ({ cartes, onStartNew, onCle
         }
         return cartes.indexOf(a) - cartes.indexOf(b);
     }), [cartes, sortBy]);
+
+    const handleExportCsv = useCallback(() => {
+        if (!cartes.length) return;
+        const rows = buildCsvRows(cartes);
+        const csvContent = '\ufeff' + rows.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const now = new Date();
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const fileName = `ax-copilot-cartes-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.csv`;
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }, [cartes]);
     
     const { kpiData, priorityData, solutionData } = useMemo(() => {
         const totalWorkload = cartes.reduce((acc, c) => acc + (c.totalWorkloadMinutesPerMonth || 0), 0);
@@ -375,6 +505,13 @@ const DashboardView: React.FC<DashboardViewProps> = ({ cartes, onStartNew, onCle
                 <div className="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
                     <h1 className="text-3xl font-bold text-gray-900">戦略ダッシュボード</h1>
                     <div className="flex items-center space-x-4">
+                        <button
+                            onClick={handleExportCsv}
+                            disabled={cartes.length === 0}
+                            className={`font-semibold py-2 px-4 rounded-lg transition-colors ${cartes.length ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                        >
+                            CSV出力
+                        </button>
                          <button
                             onClick={onClearData}
                             className="bg-red-50 text-red-600 font-semibold py-2 px-4 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-2"
