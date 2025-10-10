@@ -42,6 +42,22 @@ const CarteCard: React.FC<CarteCardProps> = ({ carte, onClick }) => {
                     </div>
                 </div>
 
+                {/* 基本メトリクス行 */}
+                <div className="my-2 text-sm text-gray-600 flex flex-col gap-2">
+                    <div>
+                        <span className="text-gray-500">1回あたり業務時間：</span>
+                        <span className="text-gray-800 font-medium">{carte.totalMinutes}分</span>
+                    </div>
+                    <div>
+                        <span className="text-gray-500">月間業務回数：</span>
+                        <span className="text-gray-800 font-medium">{carte.monthlyCount}回</span>
+                    </div>
+                    <div>
+                        <span className="text-gray-500">対象人数：</span>
+                        <span className="text-gray-800 font-medium">{carte.numberOfPeople ?? 1}人</span>
+                    </div>
+                </div>
+
                 <div className="space-y-3 text-sm">
                     <div className="flex justify-between">
                         <span className="text-gray-500">主要ツール</span>

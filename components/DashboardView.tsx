@@ -58,6 +58,11 @@ const colorMap: { [key: string]: { bg: string; text: string; dot: string; } } = 
     gray: { bg: 'bg-gray-100', text: 'text-gray-700', dot: 'bg-gray-500' },
 };
 
+const formatCurrencyJPY = (value?: number | null) => {
+    if (typeof value !== 'number' || Number.isNaN(value)) return '-';
+    return value.toLocaleString('ja-JP');
+};
+
 export const ToolIndicator: React.FC<{ category: ToolCategory; }> = ({ category }) => {
     const style = getToolStyle(category);
     const colors = colorMap[style.color];
@@ -150,6 +155,32 @@ const CarteDetailModal: React.FC<{ carte: Carte; onClose: () => void; }> = ({ ca
                 <main className="flex-grow overflow-y-auto p-8 grid grid-cols-1 lg:grid-cols-5 gap-8">
                     {/* Left Column (3/5) */}
                     <div className="lg:col-span-3 space-y-8">
+                        {/* 基本情報 */}
+                        <div>
+                            <h3 className="text-sm font-bold text-gray-500 tracking-wider uppercase mb-3">基本情報</h3>
+                            <div className="p-5 bg-white border border-gray-200 rounded-xl shadow-sm grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-xs text-gray-500">1回あたり時間</p>
+                                    <p className="text-lg font-bold text-gray-800 mt-1">{carte.totalMinutes}分</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">月間回数</p>
+                                    <p className="text-lg font-bold text-gray-800 mt-1">{carte.monthlyCount}回</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">実施人数</p>
+                                    <p className="text-lg font-bold text-gray-800 mt-1">{carte.numberOfPeople ?? 1}人</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">月間総工数</p>
+                                    <p className="text-lg font-bold text-gray-800 mt-1">{(carte.totalWorkloadMinutesPerMonth! / 60).toFixed(1)}時間</p>
+                                </div>
+                                <div className="col-span-2">
+                                    <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">推定開発コスト（内製・時給5,000円換算）</p>
+                                    <p className="text-2xl font-bold text-blue-700 mt-2">¥{formatCurrencyJPY(carte.estimatedInternalCostJPY)}</p>
+                                </div>
+                            </div>
+                        </div>
                         <div>
                              <h3 className="text-sm font-bold text-gray-500 tracking-wider uppercase mb-3 flex items-center gap-2"><LightBulbIcon className="h-5 w-5" />推奨ソリューション</h3>
                              <div className="p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
@@ -283,11 +314,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ cartes, onStartNew, onCle
     }), [cartes, sortBy]);
     
     const { kpiData, priorityData, solutionData } = useMemo(() => {
-        const totalWorkload = cartes.reduce((acc, c) => {
-            const people = c.numberOfPeople ?? 1;
-            const derived = c.totalWorkloadMinutesPerMonth ?? ((c.totalMinutes || 0) * (c.monthlyCount || 0) * people);
-            return acc + derived;
-        }, 0);
+        const totalWorkload = cartes.reduce((acc, c) => acc + (c.totalWorkloadMinutesPerMonth || 0), 0);
         const highPriorityCartes = cartes.filter(c => c.automationScore >= 60); // A and B ranks
         const savingsPotential = highPriorityCartes.reduce((acc, c) => acc + (c.monthlySavedMinutes || 0), 0);
         
