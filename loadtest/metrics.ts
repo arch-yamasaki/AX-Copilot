@@ -2,26 +2,35 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-export interface Metric {
+export interface MetricRaw {
     scenario: string;
     runId: number;
     startTime: number;
     endTime: number;
-    latency: number;
     success: boolean;
     error?: string;
-    backend?: string; // To track 'vertex' or 'google'
+    backend?: string; // 'vertex' | 'google'
     response_summary?: string;
 }
 
-const results: Metric[] = [];
+export interface MetricCsvRow {
+    scenario: string;
+    runId: number;
+    timestamp: string;      // ISO string
+    latency_sec: number;    // seconds with one decimal
+    success: boolean;
+    backend?: string;
+    error?: string;
+    response_summary?: string;
+}
+
+const results: MetricRaw[] = [];
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const resultsDir = path.resolve(__dirname, 'results');
 
-export const recordMetric = (metric: Omit<Metric, 'latency'>) => {
-    const latency = metric.endTime - metric.startTime;
-    results.push({ ...metric, latency });
+export const recordMetric = (metric: MetricRaw) => {
+    results.push(metric);
 };
 
 export const writeResultsToCsv = () => {
@@ -36,13 +45,25 @@ export const writeResultsToCsv = () => {
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filePath = path.join(resultsDir, `loadtest-results-${timestamp}.csv`);
-    const header = Object.keys(results[0]).join(',') + '\n';
-    const rows = results.map(row => {
+
+    const csvRows: MetricCsvRow[] = results.map(r => ({
+        scenario: r.scenario,
+        runId: r.runId,
+        timestamp: new Date(r.startTime).toISOString(),
+        latency_sec: parseFloat(((r.endTime - r.startTime) / 1000).toFixed(1)),
+        success: r.success,
+        backend: r.backend,
+        error: r.error,
+        response_summary: r.response_summary,
+    }));
+
+    const header = Object.keys(csvRows[0]).join(',') + '\n';
+    const rows = csvRows.map(row => {
         const values = Object.values(row).map(value => {
             const str = String(value ?? '');
-            // Wrap in double quotes if it contains a comma or a double quote
-            if (str.includes(',') || str.includes('"')) {
-                return `"${str.replace(/"/g, '""')}"`;
+            // CSV escape: quote if contains comma, quote or newline. Double quotes inside quoted fields.
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return `"${str.replace(/\"/g, '""')}"`;
             }
             return str;
         });
@@ -67,7 +88,7 @@ export const printSummary = () => {
     const failedRuns = totalRuns - successfulRuns;
     const successRate = ((successfulRuns / totalRuns) * 100).toFixed(2);
 
-    const latencies = results.filter(r => r.success).map(r => r.latency);
+    const latencies = results.filter(r => r.success).map(r => (r.endTime - r.startTime));
     const avgLatency = (latencies.reduce((a, b) => a + b, 0) / latencies.length).toFixed(2);
     const minLatency = Math.min(...latencies).toFixed(2);
     const maxLatency = Math.max(...latencies).toFixed(2);

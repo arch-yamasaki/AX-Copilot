@@ -2,11 +2,11 @@ import { createChat, generateCarteData } from './aiLogicAdapter.js';
 import { recordMetric } from './metrics.js';
 import { ChatMessage } from '../types';
 
-async function runWithTimer(runId: number, scenario: string, promiseFn: () => Promise<string | undefined>) {
+async function runWithTimer(runId: number, scenario: string, promiseFn: () => Promise<{ summary?: string; backend?: string }>) {
     const startTime = Date.now();
     try {
-        const summary = await promiseFn();
-        recordMetric({ scenario, runId, startTime, endTime: Date.now(), success: true, response_summary: summary });
+        const { summary, backend } = await promiseFn();
+        recordMetric({ scenario, runId, startTime, endTime: Date.now(), success: true, response_summary: summary, backend });
     } catch (error: any) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         recordMetric({ scenario, runId, startTime, endTime: Date.now(), success: false, error: errorMessage });
@@ -16,7 +16,8 @@ async function runWithTimer(runId: number, scenario: string, promiseFn: () => Pr
 
 export async function runStreamScenario(runId: number) {
     await runWithTimer(runId, 'S1-Stream', async () => {
-        const chat = createChat();
+        let backend: string | undefined;
+        const chat = createChat({ onBackendResolved: (k) => backend = k });
         const responseStream = await chat.sendMessageStream({ message: "対話を開始してください" });
         
         let fullText = '';
@@ -24,7 +25,7 @@ export async function runStreamScenario(runId: number) {
             fullText += chunk.text;
         }
         // CSVで壊れないように改行やカンマを除外し、長すぎないように先頭200文字を返す
-        return fullText.substring(0, 200).replace(/[\n,]/g, ' ');
+        return { summary: fullText.substring(0, 200).replace(/[\n,]/g, ' '), backend };
     });
 }
 
@@ -40,11 +41,12 @@ export async function runCarteScenario(runId: number) {
     ];
 
     await runWithTimer(runId, 'S3-Carte', async () => {
-        const carte = await generateCarteData(chatHistory);
+        let backend: string | undefined;
+        const carte = await generateCarteData(chatHistory, { onBackendResolved: (k) => backend = k });
         if (!carte || !carte.workId) {
             throw new Error('Generated carte is invalid or missing workId');
         }
-        return `ID: ${carte.workId}, Title: ${carte.title}`;
+        return { summary: `ID: ${carte.workId}, Title: ${carte.title}`, backend };
     });
 }
 

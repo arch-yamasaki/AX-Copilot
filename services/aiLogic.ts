@@ -53,17 +53,17 @@ const shouldFallbackToGoogle = (error: unknown): boolean => {
   return false;
 };
 
-const runWithFallback = async <T>(task: (kind: BackendKind) => Promise<T>, label: string): Promise<T> => {
+const runWithFallback = async <T>(task: (kind: BackendKind) => Promise<T>, label: string): Promise<{ result: T; backend: BackendKind }> => {
   try {
     const result = await task('vertex');
     console.info(`[AI Logic] ${label} handled by Vertex AI backend.`);
-    return result;
+    return { result, backend: 'vertex' };
   } catch (error) {
     if (shouldFallbackToGoogle(error)) {
       console.warn(`[AI Logic] Vertex AI ${label} failed. Falling back to Gemini Developer API.`, error);
       const fallbackResult = await task('google');
       console.info(`[AI Logic] ${label} handled by Gemini Developer API backend.`);
-      return fallbackResult;
+      return { result: fallbackResult, backend: 'google' };
     }
     throw error;
   }
@@ -203,7 +203,8 @@ function extractTextFromResponse(resp: any): string {
   }
 }
 
-export const createChat = (): ChatLike => {
+type ChatOptions = { onBackendResolved?: (kind: BackendKind) => void };
+export const createChat = (options?: ChatOptions): ChatLike => {
   const history: HistoryEntry[] = [];
 
   const appendHistory = (role: 'user' | 'model', text: string) => {
@@ -228,7 +229,9 @@ export const createChat = (): ChatLike => {
 
   return {
     async sendMessageStream({ message }) {
-      return runWithFallback(kind => runStream(kind, message), 'stream generation');
+      const { result: stream, backend } = await runWithFallback(kind => runStream(kind, message), 'stream generation');
+      options?.onBackendResolved?.(backend);
+      return stream;
     },
   };
 };
@@ -280,7 +283,8 @@ JSONスキーマに厳密に従い、\`carte\`オブジェクトを含むJSONデ
 `;
 }
 
-export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Carte> => {
+type GenerateOptions = { onBackendResolved?: (kind: BackendKind) => void };
+export const generateCarteData = async (chatHistory: ChatMessage[], options?: GenerateOptions): Promise<Carte> => {
   const prompt = buildFinalPrompt(chatHistory);
   const runStructuredGeneration = async (kind: BackendKind) => {
     const ai = getBackend(kind);
@@ -294,7 +298,8 @@ export const generateCarteData = async (chatHistory: ChatMessage[]): Promise<Car
     } as any);
   };
 
-  const resp = await runWithFallback(runStructuredGeneration, 'content generation');
+  const { result: resp, backend } = await runWithFallback(runStructuredGeneration, 'content generation');
+  options?.onBackendResolved?.(backend);
 
   const rawText = typeof resp.text === 'function' ? resp.text() : extractTextFromResponse(resp.response ?? resp);
   let jsonText = (rawText || '').trim();
