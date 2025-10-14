@@ -8,6 +8,11 @@ import HomeView from './components/HomeView';
 import Flash from './components/Flash';
 import { observeAuth, signInWithGoogle, signOutApp } from './services/authService';
 import { listCartes, addCarte as addCarteRepo, deleteCarte as deleteCarteRepo } from './services/carteRepository';
+import app from './services/firebaseClient';
+import { setAIApp } from './services/aiLogic';
+
+// Initialize AI service with the browser-specific Firebase app instance
+setAIApp(app);
 
 type View = 'chat' | 'dashboard';
 

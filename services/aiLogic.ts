@@ -1,6 +1,6 @@
-import app from './firebaseClient';
 import { AIError, GoogleAIBackend, VertexAIBackend, getAI, getGenerativeModel } from 'firebase/ai';
 import { ChatMessage, Carte } from '../types';
+import type { FirebaseApp } from 'firebase/app';
 
 type ChatLike = {
   sendMessageStream: (args: { message: string }) => AsyncIterable<{ text: string }> | Promise<AsyncIterable<{ text: string }>>;
@@ -15,12 +15,25 @@ const VERTEX_LOCATION =
 const vertexBackend = new VertexAIBackend(VERTEX_LOCATION);
 const googleBackend = new GoogleAIBackend();
 
+// Allow overriding Firebase App for non-browser environments (e.g., load testing)
+let aiApp: FirebaseApp | null = null;
+export const setAIApp = (nextApp: FirebaseApp) => {
+  if (aiApp && aiApp !== nextApp) {
+    // reset cached AI instances to ensure new app is used
+    Object.keys(aiCache).forEach(k => delete (aiCache as any)[k]);
+  }
+  aiApp = nextApp;
+};
+
 const aiCache: Partial<Record<BackendKind, ReturnType<typeof getAI>>> = {};
 
 const getBackend = (kind: BackendKind) => {
+  if (!aiApp) {
+    throw new Error('AI Service not initialized. Please call setAIApp(app) before use.');
+  }
   if (!aiCache[kind]) {
     const backend = kind === 'vertex' ? vertexBackend : googleBackend;
-    aiCache[kind] = getAI(app, { backend });
+    aiCache[kind] = getAI(aiApp, { backend });
   }
   return aiCache[kind]!;
 };
@@ -236,7 +249,7 @@ ${conversation}
 2.  **As-Is分析 (現状分析)**:
   *   対話から現状の業務フローを5〜7工程で具体的に\`asIsSteps\`として再構成してください。各ステップの\`業務ID\`は統一してください。
   *   \`総時間_分\`と各工程の\`時間_分\`の合計が一致するように調整してください。
-  *   \`現状のボトルネック\`を専門家の視点で2〜3点、配列で的確に言語化してください。
+  *   \`現状のボトルネック\`を専門家の視点で2〜3点、配列での確に言語化してください。
   *   \`AsIsフロー要約\`を専門家の視点で的確に言語化してください。
 
 3.  **To-Be提案 (改善提案) - 最重要**:
