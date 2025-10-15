@@ -35,6 +35,9 @@ const App: React.FC = () => {
   const [currentCarteId, setCurrentCarteId] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ msg: string; type: 'info'|'success'|'error' } | null>(null);
   const [needsProfile, setNeedsProfile] = useState<boolean>(false);
+  const [showEditProfile, setShowEditProfile] = useState<boolean>(false);
+  const [editDefaultFullname, setEditDefaultFullname] = useState<string>('');
+  const [editDefaultDepartment, setEditDefaultDepartment] = useState<string>('');
 
   const showFlash = useCallback((msg: string, type: 'info'|'success'|'error' = 'info') => {
     setFlash({ msg, type });
@@ -102,6 +105,19 @@ const App: React.FC = () => {
     }
   }, [user, currentCarteId]);
 
+  const openProfileEditor = useCallback(async () => {
+    if (!user) return;
+    try {
+      const profile = await getUserProfile(user.uid);
+      setEditDefaultFullname(profile?.fullname || user.displayName || '');
+      setEditDefaultDepartment(profile?.department || '');
+      setShowEditProfile(true);
+    } catch (e) {
+      console.error(e);
+      showFlash('プロフィールの読み込みに失敗しました', 'error');
+    }
+  }, [user, showFlash]);
+
   if (isLoading) {
     return <LoadingScreen />;
   }
@@ -129,6 +145,12 @@ const App: React.FC = () => {
                   disabled={cartes.length === 0}
                 >
                   カルテダッシュボード
+                </button>
+                <button
+                  onClick={openProfileEditor}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200"
+                >
+                  プロフィール
                 </button>
               </>
             )}
@@ -176,6 +198,26 @@ const App: React.FC = () => {
               const fetched = await listCartes(user.uid);
               setCartes(fetched);
               setView(fetched.length > 0 ? 'dashboard' : 'chat');
+            } catch (e) {
+              console.error(e);
+              showFlash('プロフィールの保存に失敗しました', 'error');
+              throw e;
+            }
+          }}
+        />
+      )}
+      {showEditProfile && user && (
+        <ProfileSetupDialog
+          user={user}
+          mode="edit"
+          defaultFullname={editDefaultFullname}
+          defaultDepartment={editDefaultDepartment}
+          onCancel={() => setShowEditProfile(false)}
+          onSave={async (fullname, department) => {
+            try {
+              await setUserProfile(user.uid, { fullname, department, email: user.email || '' });
+              setShowEditProfile(false);
+              showFlash('プロフィールを保存しました', 'success');
             } catch (e) {
               console.error(e);
               showFlash('プロフィールの保存に失敗しました', 'error');

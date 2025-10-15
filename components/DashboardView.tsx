@@ -6,6 +6,9 @@ import { TrashIcon } from './icons/TrashIcon';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XIcon } from './icons/XIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
+import { cartesToCsvRows, buildCsvContent, buildDefaultFileName, downloadCsv } from '../services/exportService';
+import { getUserProfile } from '../services/userRepository';
+import { auth } from '../services/firebaseClient';
 
 const TrendingUpIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.307a11.95 11.95 0 0 1 5.814-5.519l2.74-1.22m0 0-3.75-.625m3.75.625V3.375" /></svg>
@@ -31,6 +34,7 @@ interface DashboardViewProps {
   onStartNew: () => void;
   onDeleteCarte: (workId: string) => void;
   highlightId: string | null;
+  uid?: string;
 }
 
 export const getPriorityStyles = (priority: number) => {
@@ -74,116 +78,7 @@ const buildSavedMinuteDetails = (carte: Carte) => {
     return `(改善前${carte.totalMinutes}分 - 改善後${toBeTotal}分) × 月${carte.monthlyCount}回 × ${people}人 = ${carte.monthlySavedMinutes}分`;
 };
 
-const escapeCsv = (value: string) => `"${value.replaceAll('"', '""')}"`;
-
-const formatAsIsSteps = (carte: Carte) => {
-    if (!carte.asIsSteps.length) return '';
-    return carte.asIsSteps
-        .map(step => `${step.stepNo}: ${step.asIsStepName} (${step.minutes}分)`)
-        .join(' / ');
-};
-
-const formatToBeSteps = (carte: Carte) => {
-    if (!carte.toBeSteps.length) return '';
-    return carte.toBeSteps
-        .map(step => {
-            const mode = step.executorType === 'automated' ? '自動化' : '手動';
-            return `${step.stepNo}: ${step.toBeStepName} [${mode}] (${step.minutes}分)`;
-        })
-        .join(' / ');
-};
-
-const buildCsvRows = (cartes: Carte[]) => {
-    const header = [
-        '業務ID',
-        '業務名',
-        'カテゴリ',
-        '実施頻度',
-        '月間回数',
-        '1回あたり総時間(分)',
-        '工程数',
-        '主要ツール',
-        '現状のボトルネック',
-        '主要データ',
-        'データ形式',
-        'データ状態',
-        'データ保存場所',
-        'API連携',
-        'As-Is要約',
-        'As-Is工程',
-        'To-Be要約',
-        'To-Be工程',
-        '推奨ツールカテゴリ',
-        '推奨ソリューション',
-        '改善インパクト',
-        '自動化可能度(%)',
-        '自動化可能度の根拠',
-        '属人性',
-        '属人性の根拠',
-        '備考',
-        '月間削減時間(分)',
-        '実施人数',
-        '月間総工数(分)',
-        '推定開発コスト(JPY)',
-        '高度な提案タイトル',
-        '高度な提案概要',
-    ];
-
-    const rows = cartes.map(carte => {
-        const fallback = carte as any;
-        const recommendedSolution = carte.recommendedSolution ?? fallback['推奨ソリューション'] ?? '';
-        const improvementImpact = carte.improvementImpact ?? fallback['改善インパクト'] ?? '';
-        const asIsSummary = carte.asIsSummary ?? fallback['AsIsフロー要約'] ?? '';
-        const toBeSummary = carte.toBeSummary ?? fallback['ToBeフロー要約'] ?? '';
-        const automationScoreRationale = carte.automationScoreRationale ?? fallback['自動化可能度根拠'] ?? '';
-        const humanDependency = (carte.humanDependency ?? fallback['属人性']) ?? '';
-        const humanDependencyRationale = carte.humanDependencyRationale ?? fallback['属人性根拠'] ?? '';
-        const notes = carte.notes ?? fallback['備考'] ?? '';
-        const advancedProposal = carte.advancedProposal ?? fallback['高度な提案'];
-        const advancedTitle = advancedProposal?.title ?? advancedProposal?.タイトル ?? '';
-        const advancedDescription = advancedProposal?.description ?? advancedProposal?.説明 ?? '';
-        const totalWorkload = carte.totalWorkloadMinutesPerMonth ?? (carte.totalMinutes * carte.monthlyCount * (carte.numberOfPeople ?? 1));
-
-        const values = [
-            carte.workId,
-            carte.title,
-            carte.category,
-            carte.frequency,
-            `${carte.monthlyCount ?? ''}`,
-            `${carte.totalMinutes ?? ''}`,
-            `${carte.numSteps ?? ''}`,
-            carte.primaryTool,
-            (carte.currentBottlenecks ?? []).join(' / '),
-            carte.primaryData,
-            carte.dataFormat,
-            carte.dataState,
-            carte.dataStorage,
-            carte.apiIntegration,
-            asIsSummary,
-            formatAsIsSteps(carte),
-            toBeSummary,
-            formatToBeSteps(carte),
-            getToolStyle(carte.recommendedToolCategory).name,
-            recommendedSolution,
-            improvementImpact.replace(/\r?\n/g, ' '),
-            `${carte.automationScore ?? ''}`,
-            automationScoreRationale,
-            humanDependency,
-            humanDependencyRationale,
-            notes,
-            `${carte.monthlySavedMinutes ?? ''}`,
-            `${carte.numberOfPeople ?? ''}`,
-            `${totalWorkload ?? ''}`,
-            `${carte.estimatedInternalCostJPY ?? ''}`,
-            advancedTitle,
-            advancedDescription,
-        ];
-
-        return values.map(value => escapeCsv(value ?? '')).join(',');
-    });
-
-    return [header.join(','), ...rows];
-};
+// CSVロジックは services/exportService.ts に移動
 
 export const ToolIndicator: React.FC<{ category?: ToolCategory }> = ({ category }) => {
     const style = getToolStyle(category);
@@ -436,23 +331,26 @@ const DashboardView: React.FC<DashboardViewProps> = ({ cartes, onStartNew, onDel
         return cartes.indexOf(a) - cartes.indexOf(b);
     }), [cartes, sortBy]);
 
-    const handleExportCsv = useCallback(() => {
+    const handleExportCsv = useCallback(async () => {
         if (!cartes.length) return;
-        const rows = buildCsvRows(cartes);
-        const csvContent = '\ufeff' + rows.join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const now = new Date();
-        const pad = (n: number) => n.toString().padStart(2, '0');
-        const fileName = `ax-copilot-cartes-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.csv`;
-
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        const user = auth.currentUser;
+        const uid = user?.uid || '';
+        const email = user?.email || '';
+        let fullname = '';
+        let department = '';
+        try {
+            if (uid) {
+                const profile = await getUserProfile(uid);
+                fullname = profile?.fullname || '';
+                department = profile?.department || '';
+            }
+        } catch (e) {
+            // 失敗しても空文字で継続
+        }
+        const rows = cartesToCsvRows(cartes, { uid, fullname, department, email });
+        const csvContent = buildCsvContent(rows, true);
+        const fileName = buildDefaultFileName();
+        downloadCsv(csvContent, fileName);
     }, [cartes]);
     
     const { kpiData, priorityData, solutionData } = useMemo(() => {
