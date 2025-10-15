@@ -93,3 +93,4 @@ services/ai/
 - 環境変数は現行の `VITE_*` 系を継続利用（`firebaseClient.ts` に依存）。
 
 
+

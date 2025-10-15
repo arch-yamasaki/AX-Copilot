@@ -74,3 +74,14 @@ export interface ToBeStep {
 export type Answers = {
   [key: string]: string | null;
 };
+
+// --- User Profile ---
+import type { Timestamp } from 'firebase/firestore';
+
+export interface UserProfile {
+  fullname: string;
+  department: string;
+  email: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}

@@ -10,6 +10,8 @@ import { observeAuth, signInWithGoogle, signOutApp } from './services/authServic
 import { listCartes, addCarte as addCarteRepo, deleteCarte as deleteCarteRepo } from './services/carteRepository';
 import app from './services/firebaseClient';
 import { setAIApp } from './services/aiLogic';
+import { getUserProfile, setUserProfile } from './services/userRepository';
+import ProfileSetupDialog from './components/ProfileSetupDialog';
 
 // Initialize AI service with the browser-specific Firebase app instance
 setAIApp(app);
@@ -32,6 +34,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentCarteId, setCurrentCarteId] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ msg: string; type: 'info'|'success'|'error' } | null>(null);
+  const [needsProfile, setNeedsProfile] = useState<boolean>(false);
 
   const showFlash = useCallback((msg: string, type: 'info'|'success'|'error' = 'info') => {
     setFlash({ msg, type });
@@ -39,16 +42,24 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // 認証状態を監視し、ログイン済みならFirestoreからカルテを読み込む
+    // 認証状態を監視し、ログイン済みならプロフィールを確認してからカルテを読み込む
     const unsub = observeAuth(async (u) => {
       setIsLoading(true);
       try {
         setUser(u);
         if (u) {
-          const fetched = await listCartes(u.uid);
-          setCartes(fetched);
-          setView(fetched.length > 0 ? 'dashboard' : 'chat');
+          const profile = await getUserProfile(u.uid);
+          if (!profile) {
+            setNeedsProfile(true);
+            setCartes([]);
+            setView('chat');
+          } else {
+            const fetched = await listCartes(u.uid);
+            setCartes(fetched);
+            setView(fetched.length > 0 ? 'dashboard' : 'chat');
+          }
         } else {
+          setNeedsProfile(false);
           setCartes([]);
           setView('chat');
         }
@@ -153,6 +164,26 @@ const App: React.FC = () => {
           </>
         )}
       </main>
+      {needsProfile && user && (
+        <ProfileSetupDialog
+          user={user}
+          defaultFullname={user.displayName || undefined}
+          onSave={async (fullname, department) => {
+            try {
+              await setUserProfile(user.uid, { fullname, department, email: user.email || '' });
+              setNeedsProfile(false);
+              showFlash('プロフィールを保存しました', 'success');
+              const fetched = await listCartes(user.uid);
+              setCartes(fetched);
+              setView(fetched.length > 0 ? 'dashboard' : 'chat');
+            } catch (e) {
+              console.error(e);
+              showFlash('プロフィールの保存に失敗しました', 'error');
+              throw e;
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -25,6 +25,17 @@
 - `components/HomeView.tsx`: ランディングとログインCTA。
 - `services/authService.ts`: Googleサインイン/サインアウト、簡易ドメイン判定。
 
+### 初回ログイン時のプロフィール登録
+- ログイン後、`users/{uid}` ドキュメント（プロフィール）を確認します。
+- 未作成の場合は `ProfileSetupDialog` が表示され、氏名（fullname）と部署名（department）を入力して保存します。
+- 保存成功後に `users/{uid}/cartes` を読み込み、ダッシュボード/チャットに遷移します。
+- プロフィールスキーマ: `{ fullname: string, department: string, email: string, createdAt: Timestamp, updatedAt: Timestamp }`
+
+関連ファイル:
+- `services/userRepository.ts`: `getUserProfile` / `setUserProfile`
+- `components/ProfileSetupDialog.tsx`: プロフィール入力モーダル
+- `App.tsx`: プロフィール存在チェックとフロー制御
+
 ---
 
 ## 0. 事前準備
